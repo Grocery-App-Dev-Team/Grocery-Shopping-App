@@ -1,0 +1,7 @@
+# Cấu trúc: [Folder]  [Tên-Org]/[Tên-Team]
+
+# Folder backend thì bắt buộc team backend review
+/client/     @Grocery-App-Dev-Team/backend
+
+# Folder frontend thì bắt buộc team frontend review
+/server/    @Grocery-App-Dev-Team/frontend
