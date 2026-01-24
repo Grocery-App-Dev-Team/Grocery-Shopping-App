@@ -33,9 +33,6 @@ public class StoreService {
     private final StoreRepository storeRepository;
     private final UserRepository userRepository;
 
-    /**
-     * Tạo cửa hàng mới (STORE owner only)
-     */
     @Transactional
     public StoreResponse createStore(CreateStoreRequest request) {
         User currentUser = getCurrentUser();
@@ -67,9 +64,6 @@ public class StoreService {
         return StoreResponse.fromEntity(savedStore);
     }
 
-    /**
-     * Cập nhật thông tin cửa hàng (Owner only)
-     */
     @Transactional
     public StoreResponse updateStore(Long storeId, UpdateStoreRequest request) {
         Store store = storeRepository.findById(storeId)
@@ -98,9 +92,6 @@ public class StoreService {
         return StoreResponse.fromEntity(updatedStore);
     }
 
-    /**
-     * Lấy thông tin cửa hàng của mình (Owner)
-     */
     public StoreResponse getMyStore() {
         User currentUser = getCurrentUser();
         
@@ -110,9 +101,6 @@ public class StoreService {
         return StoreResponse.fromEntity(store);
     }
 
-    /**
-     * Lấy thông tin cửa hàng theo ID (Public)
-     */
     public StoreResponse getStoreById(Long storeId) {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Store", "id", storeId));
@@ -120,36 +108,24 @@ public class StoreService {
         return StoreResponse.fromEntity(store);
     }
 
-    /**
-     * Lấy danh sách tất cả cửa hàng (Public)
-     */
     public List<StoreListResponse> getAllStores() {
         return storeRepository.findAll().stream()
                 .map(StoreListResponse::fromEntity)
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Lấy danh sách cửa hàng đang mở (Public)
-     */
     public List<StoreListResponse> getOpenStores() {
         return storeRepository.findByIsOpen(true).stream()
                 .map(StoreListResponse::fromEntity)
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Tìm kiếm cửa hàng theo tên (Public)
-     */
     public List<StoreListResponse> searchStores(String keyword) {
         return storeRepository.findByStoreNameContainingIgnoreCase(keyword).stream()
                 .map(StoreListResponse::fromEntity)
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Toggle trạng thái mở/đóng cửa (Owner only)
-     */
     @Transactional
     public StoreResponse toggleStoreStatus(Long storeId) {
         Store store = storeRepository.findById(storeId)
@@ -171,9 +147,6 @@ public class StoreService {
         return StoreResponse.fromEntity(updatedStore);
     }
 
-    /**
-     * Xóa cửa hàng (Owner hoặc Admin)
-     */
     @Transactional
     public void deleteStore(Long storeId) {
         Store store = storeRepository.findById(storeId)
@@ -191,9 +164,6 @@ public class StoreService {
         log.info("Deleted store: {}", storeId);
     }
 
-    /**
-     * Helper: Lấy current user từ SecurityContext
-     */
     private User getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String phoneNumber = authentication.getName();

@@ -35,9 +35,9 @@ public class StoreController {
     /**
      * POST /api/stores
      * Tạo cửa hàng mới
-     * 
+     *
      * Authorization: Bearer token (STORE role only)
-     * 
+     *
      * Request Body:
      * {
      *   "storeName": "Tạp hóa ABC",
@@ -64,7 +64,7 @@ public class StoreController {
     /**
      * GET /api/stores/my-store
      * Lấy thông tin cửa hàng của mình
-     * 
+     *
      * Authorization: Bearer token (STORE role)
      */
     @GetMapping("/my-store")

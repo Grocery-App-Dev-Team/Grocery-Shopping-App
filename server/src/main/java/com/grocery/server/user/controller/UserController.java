@@ -69,22 +69,6 @@ public class UserController {
     /**
      * PUT /api/users/profile
      * Cập nhật thông tin profile
-     * 
-     * Authorization: Bearer token (bất kỳ role nào đã login)
-     * 
-     * Request Body:
-     * {
-     *   "fullName": "Nguyễn Văn B",
-     *   "address": "456 Đường XYZ",
-     *   "avatarUrl": "https://..."
-     * }
-     * 
-     * Response:
-     * {
-     *   "success": true,
-     *   "message": "Cập nhật profile thành công",
-     *   "data": { ... }
-     * }
      */
     @PutMapping("/profile")
     public ResponseEntity<ApiResponse<UserProfileResponse>> updateProfile(
