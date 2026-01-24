@@ -160,8 +160,7 @@ public class AuthService {
         // Clear security context
         SecurityContextHolder.clearContext();
         
-        // TODO: Implement token blacklist if needed
-        // Có thể lưu token vào Redis/Database để blacklist
+
     }
     
     /**

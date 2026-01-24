@@ -18,7 +18,7 @@ public class AuthResponse {
     private String token;
     
     /**
-     * Loại token (luôn là "Bearer")
+     * Loại token 
      */
     @Builder.Default
     private String type = "Bearer";
