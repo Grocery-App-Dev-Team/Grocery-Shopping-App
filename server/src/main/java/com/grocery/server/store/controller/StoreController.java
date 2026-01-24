@@ -31,35 +31,13 @@ public class StoreController {
     private final StoreService storeService;
 
     // ========== STORE OWNER - STORE MANAGEMENT ==========
-
+    
     /**
-     * POST /api/stores
-     * Tạo cửa hàng mới
-     *
-     * Authorization: Bearer token (STORE role only)
-     *
-     * Request Body:
-     * {
-     *   "storeName": "Tạp hóa ABC",
-     *   "address": "123 Đường XYZ",
-     *   "phoneNumber": "0912345678",
-     *   "description": "Tạp hóa bán đồ tươi sống",
-     *   "imageUrl": "https://..."
-     * }
+     * NOTE: Endpoint tạo Store đã được chuyển sang POST /api/auth/register
+     * 
+     * Khi đăng ký với role = STORE, hệ thống sẽ tự động tạo Store.
+     * User không cần gọi API riêng để tạo Store nữa.
      */
-    @PostMapping
-    @PreAuthorize("hasRole('STORE')")
-    public ResponseEntity<ApiResponse<StoreResponse>> createStore(
-            @Valid @RequestBody CreateStoreRequest request) {
-        
-        log.info("POST /api/stores - Create new store");
-        
-        StoreResponse response = storeService.createStore(request);
-        
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Tạo cửa hàng thành công", response));
-    }
 
     /**
      * GET /api/stores/my-store

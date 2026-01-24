@@ -33,36 +33,18 @@ public class StoreService {
     private final StoreRepository storeRepository;
     private final UserRepository userRepository;
 
-    @Transactional
-    public StoreResponse createStore(CreateStoreRequest request) {
-        User currentUser = getCurrentUser();
-        
-        // Kiểm tra user có role STORE không
-        if (currentUser.getRole() != User.UserRole.STORE) {
-            throw new BadRequestException("Chỉ tài khoản STORE mới có thể tạo cửa hàng");
-        }
-        
-        // Kiểm tra user đã có cửa hàng chưa (1 user chỉ có 1 store)
-        if (storeRepository.existsByOwnerId(currentUser.getId())) {
-            throw new BadRequestException("Bạn đã có cửa hàng rồi");
-        }
-        
-        // Tạo store mới
-        Store store = Store.builder()
-                .owner(currentUser)
-                .storeName(request.getStoreName())
-                .address(request.getAddress())
-                .phoneNumber(request.getPhoneNumber())
-                .description(request.getDescription())
-                .imageUrl(request.getImageUrl())
-                .isOpen(true)
-                .build();
-        
-        Store savedStore = storeRepository.save(store);
-        log.info("Created store: {} for user: {}", savedStore.getStoreName(), currentUser.getPhoneNumber());
-        
-        return StoreResponse.fromEntity(savedStore);
-    }
+    /**
+     * NOTE: Method createStore() đã bị XÓA
+     * 
+     * Lý do: Store được tự động tạo trong quá trình đăng ký (AuthService.register)
+     * khi user chọn role = STORE.
+     * 
+     * Flow mới:
+     * 1. Frontend: User chọn "Đăng ký với tư cách cửa hàng"
+     * 2. Frontend: Hiển thị form bao gồm thông tin User + Store
+     * 3. Frontend: Gửi POST /api/auth/register với đầy đủ thông tin
+     * 4. Backend: AuthService.register() tự động tạo User và Store
+     */
 
     @Transactional
     public StoreResponse updateStore(Long storeId, UpdateStoreRequest request) {
