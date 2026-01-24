@@ -43,21 +43,38 @@ public class SecurityConfig {
             
             // Cấu hình authorization
             .authorizeHttpRequests(auth -> auth
-                // Public endpoints (không cần login)
+                // ========== PUBLIC ENDPOINTS (Không cần authentication) ==========
+                
+                // Auth endpoints
                 .requestMatchers("/auth/**").permitAll()
                 .requestMatchers("/public/**").permitAll()
+                
+                // Store public endpoints (GET only - xem danh sách, tìm kiếm, chi tiết)
+                .requestMatchers(HttpMethod.GET, "/stores").permitAll()
+                .requestMatchers(HttpMethod.GET, "/stores/open").permitAll()
+                .requestMatchers(HttpMethod.GET, "/stores/search").permitAll()
+                
+                // ========== PROTECTED ENDPOINTS (Cần authentication + role) ==========
+                
+                // Store management endpoints (STORE role only)
+                 .requestMatchers(HttpMethod.GET, "/stores/my-store").hasRole("STORE")
+                .requestMatchers(HttpMethod.PUT, "/stores/**").hasRole("STORE")
+                .requestMatchers(HttpMethod.PATCH, "/stores/**").hasRole("STORE")
+                .requestMatchers(HttpMethod.DELETE, "/stores/**").hasAnyRole("STORE", "ADMIN")
+                
+                // User endpoints (authenticated users)
+                .requestMatchers("/users/profile/**").authenticated()
+                .requestMatchers("/users/change-password").authenticated()
+                
+                // Admin endpoints
+                .requestMatchers("/users/**").hasRole("ADMIN")
+                .requestMatchers("/admin/**").hasRole("ADMIN")
                 
                 // Customer endpoints
                 .requestMatchers("/customer/**").hasRole("CUSTOMER")
                 
-                // Store endpoints
-                .requestMatchers("/store/**").hasRole("STORE")
-                
                 // Shipper endpoints
                 .requestMatchers("/shipper/**").hasRole("SHIPPER")
-                
-                // Admin endpoints
-                .requestMatchers("/admin/**").hasRole("ADMIN")
                 
                 // Các request khác đều cần authentication
                 .anyRequest().authenticated()

@@ -1,7 +1,10 @@
 package com.grocery.server.store.dto.request;
 
+<<<<<<< Updated upstream
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
+=======
+>>>>>>> Stashed changes
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -9,14 +12,20 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
+<<<<<<< Updated upstream
  * DTO: UpdateStoreRequest
  * Mục đích: Request body để cập nhật thông tin cửa hàng
+=======
+ * DTO Request: UpdateStoreRequest
+ * Mục đích: Nhận dữ liệu cập nhật thông tin cửa hàng
+>>>>>>> Stashed changes
  */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class UpdateStoreRequest {
+<<<<<<< Updated upstream
 
     @NotBlank(message = "Tên cửa hàng không được để trống")
     @Size(min = 3, max = 100, message = "Tên cửa hàng phải từ 3-100 ký tự")
@@ -33,4 +42,18 @@ public class UpdateStoreRequest {
     private String description;
 
     private String imageUrl;
+=======
+    
+    /**
+     * Tên cửa hàng
+     */
+    @Size(max = 100, message = "Tên cửa hàng không được quá 100 ký tự")
+    private String storeName;
+    
+    /**
+     * Địa chỉ cửa hàng
+     */
+    @Size(max = 500, message = "Địa chỉ không được quá 500 ký tự")
+    private String address;
+>>>>>>> Stashed changes
 }
