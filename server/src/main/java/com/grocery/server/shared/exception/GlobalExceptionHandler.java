@@ -90,6 +90,48 @@ public class GlobalExceptionHandler {
     }
     
     /**
+     * Xử lý ResourceNotFoundException
+     */
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleResourceNotFoundException(
+            ResourceNotFoundException ex) {
+        
+        log.error("Resource not found: {}", ex.getMessage());
+        
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error(ex.getMessage()));
+    }
+    
+    /**
+     * Xử lý BadRequestException
+     */
+    @ExceptionHandler(BadRequestException.class)
+    public ResponseEntity<ApiResponse<Void>> handleBadRequestException(
+            BadRequestException ex) {
+        
+        log.error("Bad request: {}", ex.getMessage());
+        
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(ex.getMessage()));
+    }
+    
+    /**
+     * Xử lý UnauthorizedException
+     */
+    @ExceptionHandler(UnauthorizedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleUnauthorizedException(
+            UnauthorizedException ex) {
+        
+        log.error("Unauthorized: {}", ex.getMessage());
+        
+        return ResponseEntity
+                .status(HttpStatus.FORBIDDEN)
+                .body(ApiResponse.error(ex.getMessage()));
+    }
+    
+    /**
      * Xử lý tất cả exceptions còn lại
      */
     @ExceptionHandler(Exception.class)

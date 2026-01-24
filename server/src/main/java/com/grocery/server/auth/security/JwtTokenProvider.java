@@ -20,10 +20,16 @@ import java.util.Date;
 @Slf4j
 public class JwtTokenProvider {
     
-    @Value("${app.jwt.secret:mySecretKey123456789012345678901234567890123456789012345678901234567890}")
+    /**
+     * Secret key (Base64 encoded) - Được config trong application.properties
+     */
+    @Value("${app.jwt.secret}")
     private String jwtSecret;
     
-    @Value("${app.jwt.expiration:86400000}") // 24 giờ (mili giây)
+    /**
+     * Token expiration time (milliseconds) - Được config trong application.properties
+     */
+    @Value("${app.jwt.expiration}") 
     private long jwtExpirationMs;
     
     private SecretKey key;
