@@ -1,0 +1,41 @@
+package com.grocery.server.store.dto.response;
+
+import com.grocery.server.store.entity.Store;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+/**
+ * DTO Response: StoreResponse
+ * Mục đích: Trả về thông tin chi tiết cửa hàng
+ */
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class StoreResponse {
+    
+    private Long id;
+    private Long ownerId;
+    private String ownerName;
+    private String ownerPhone;
+    private String storeName;
+    private String address;
+    private Boolean isOpen;
+    
+    /**
+     * Chuyển từ Store entity sang StoreResponse DTO
+     */
+    public static StoreResponse fromEntity(Store store) {
+        return StoreResponse.builder()
+                .id(store.getId())
+                .ownerId(store.getOwner().getId())
+                .ownerName(store.getOwner().getFullName())
+                .ownerPhone(store.getOwner().getPhoneNumber())
+                .storeName(store.getStoreName())
+                .address(store.getAddress())
+                .isOpen(store.getIsOpen())
+                .build();
+    }
+}
