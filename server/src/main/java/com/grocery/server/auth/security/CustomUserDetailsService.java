@@ -43,7 +43,7 @@ public class CustomUserDetailsService implements UserDetailsService {
     }
     
     /**
-     * Lấy quyền của user (role)
+     * Lấy quyền của user
      */
     private Collection<? extends GrantedAuthority> getAuthorities(User user) {
         return Collections.singletonList(

@@ -158,6 +158,15 @@ public class UserService {
         userRepository.delete(user);
         log.info("Deleted user: {}", user.getPhoneNumber());
     }
+    @Transactional
+    public List<UserListResponse> getUsersByStatus(User.UserStatus status) {
+        List<User> users = userRepository.findByStatus(status);
+        log.info("Get users by status: {}, total: {}", status, users.size());
+
+        return users.stream()
+                .map(UserListResponse::fromEntity)
+                .collect(Collectors.toList());
+    }
 
     /**
      * Helper: Lấy current user từ SecurityContext

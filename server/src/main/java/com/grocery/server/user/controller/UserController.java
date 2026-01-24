@@ -108,6 +108,21 @@ public class UserController {
         );
     }
 
+    @GetMapping("/status/{status}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<List<UserListResponse>>> getUsersByStatus(
+            @PathVariable String status) {
+
+        log.info("GET /api/users/role/{} - Get users by status (Admin)", status);
+
+        User.UserStatus userStatus = User.UserStatus.valueOf(status.toUpperCase());
+        List<UserListResponse> users = userService.getUsersByStatus(userStatus);
+
+        return ResponseEntity.ok(
+                ApiResponse.success("Lấy danh sách users theo status thành công", users)
+        );
+    }
+
     @PatchMapping("/{userId}/toggle-status")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<UserProfileResponse>> toggleUserStatus(

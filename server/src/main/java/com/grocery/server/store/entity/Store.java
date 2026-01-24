@@ -29,52 +29,29 @@ public class Store {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /**
-     * Chủ cửa hàng (User có role = STORE)
-     */
     @OneToOne
     @JoinColumn(name = "user_id", nullable = false)
     private User owner;
 
-    /**
-     * Tên hiển thị cửa hàng
-     * VD: "Tạp hóa cô Ba", "Siêu thị mini Hoàng Anh"
-     */
     @Column(name = "store_name", nullable = false, length = 100)
     private String storeName;
 
-    /**
-     * Địa chỉ thực tế của cửa hàng
-     */
     @Column(nullable = false)
     private String address;
 
-    /**
-     * Trạng thái cửa hàng:
-     * - true: Đang mở cửa
-     * - false: Tạm đóng cửa
-     */
+
     @Column(name = "is_open", nullable = false)
     @Builder.Default
     private Boolean isOpen = true;
 
     // ========== RELATIONSHIPS ==========
 
-    /**
-     * Danh sách sản phẩm của cửa hàng
-     */
     @OneToMany(mappedBy = "store", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Product> products;
 
-    /**
-     * Danh sách đơn hàng nhận được
-     */
     @OneToMany(mappedBy = "store", cascade = CascadeType.ALL)
     private List<Order> orders;
 
-    /**
-     * Danh sách đánh giá về cửa hàng
-     */
     @OneToMany(mappedBy = "store", cascade = CascadeType.ALL)
     private List<Review> reviews;
 }

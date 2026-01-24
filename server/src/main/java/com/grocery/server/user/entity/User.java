@@ -57,8 +57,6 @@ public class User {
 
     /**
      * Trạng thái tài khoản:
-     * - ACTIVE: Đang hoạt động
-     * - BANNED: Bị khóa
      */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
