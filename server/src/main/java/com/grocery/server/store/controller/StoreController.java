@@ -1,7 +1,6 @@
 package com.grocery.server.store.controller;
 
 import com.grocery.server.shared.dto.ApiResponse;
-import com.grocery.server.store.dto.request.CreateStoreRequest;
 import com.grocery.server.store.dto.request.UpdateStoreRequest;
 import com.grocery.server.store.dto.response.StoreListResponse;
 import com.grocery.server.store.dto.response.StoreResponse;
@@ -9,7 +8,6 @@ import com.grocery.server.store.service.StoreService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -30,47 +28,104 @@ public class StoreController {
 
     private final StoreService storeService;
 
+    // ========== STORE OWNER - STORE MANAGEMENT ==========
+    
     /**
-     * Tạo cửa hàng mới
-     * POST /api/stores
-     * Yêu cầu: User đã đăng nhập
+     * NOTE: Endpoint tạo Store đã được chuyển sang POST /api/auth/register
+     * 
+     * Khi đăng ký với role = STORE, hệ thống sẽ tự động tạo Store.
+     * User không cần gọi API riêng để tạo Store nữa.
      */
-    @PostMapping
-    public ResponseEntity<ApiResponse<StoreResponse>> createStore(
-            @Valid @RequestBody CreateStoreRequest request) {
-        
-        log.info("POST /api/stores - Create new store");
-        
-        StoreResponse store = storeService.createStore(request);
-        
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Tạo cửa hàng thành công", store));
-    }
 
     /**
-     * Lấy thông tin cửa hàng của user hiện tại
      * GET /api/stores/my-store
-     * Yêu cầu: User đã đăng nhập
+     * Lấy thông tin cửa hàng của mình
+     *
+     * Authorization: Bearer token (STORE role)
      */
     @GetMapping("/my-store")
+    @PreAuthorize("hasRole('STORE')")
     public ResponseEntity<ApiResponse<StoreResponse>> getMyStore() {
+        log.info("GET /api/stores/my-store - Get my store");
         
-        log.info("GET /api/stores/my-store - Get current user's store");
-        
-        StoreResponse store = storeService.getMyStore();
+        StoreResponse response = storeService.getMyStore();
         
         return ResponseEntity.ok(
-                ApiResponse.success("Lấy thông tin cửa hàng thành công", store)
+                ApiResponse.success("Lấy thông tin cửa hàng thành công", response)
         );
     }
 
     /**
-     * Lấy tất cả cửa hàng (Public)
+     * PUT /api/stores/{storeId}
+     * Cập nhật thông tin cửa hàng
+     * 
+     * Authorization: Bearer token (STORE owner)
+     */
+    @PutMapping("/{storeId}")
+    @PreAuthorize("hasRole('STORE')")
+    public ResponseEntity<ApiResponse<StoreResponse>> updateStore(
+            @PathVariable Long storeId,
+            @Valid @RequestBody UpdateStoreRequest request) {
+        
+        log.info("PUT /api/stores/{} - Update store", storeId);
+        
+        StoreResponse response = storeService.updateStore(storeId, request);
+        
+        return ResponseEntity.ok(
+                ApiResponse.success("Cập nhật cửa hàng thành công", response)
+        );
+    }
+
+    /**
+     * PATCH /api/stores/{storeId}/toggle-status
+     * Mở/Đóng cửa hàng
+     * 
+     * Authorization: Bearer token (STORE owner)
+     */
+    @PatchMapping("/{storeId}/toggle-status")
+    @PreAuthorize("hasRole('STORE')")
+    public ResponseEntity<ApiResponse<StoreResponse>> toggleStoreStatus(
+            @PathVariable Long storeId) {
+        
+        log.info("PATCH /api/stores/{}/toggle-status", storeId);
+        
+        StoreResponse response = storeService.toggleStoreStatus(storeId);
+        
+        return ResponseEntity.ok(
+                ApiResponse.success("Cập nhật trạng thái cửa hàng thành công", response)
+        );
+    }
+
+    /**
+     * DELETE /api/stores/{storeId}
+     * Xóa cửa hàng
+     * 
+     * Authorization: Bearer token (STORE owner or ADMIN)
+     */
+    @DeleteMapping("/{storeId}")
+    @PreAuthorize("hasRole('STORE') or hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> deleteStore(
+            @PathVariable Long storeId) {
+        
+        log.info("DELETE /api/stores/{}", storeId);
+        
+        storeService.deleteStore(storeId);
+        
+        return ResponseEntity.ok(
+                ApiResponse.success("Xóa cửa hàng thành công", null)
+        );
+    }
+
+    // ========== PUBLIC - VIEW STORES ==========
+
+    /**
      * GET /api/stores
+     * Lấy danh sách tất cả cửa hàng
+     * 
+     * Public endpoint (không cần authentication)
      */
     @GetMapping
     public ResponseEntity<ApiResponse<List<StoreListResponse>>> getAllStores() {
-        
         log.info("GET /api/stores - Get all stores");
         
         List<StoreListResponse> stores = storeService.getAllStores();
@@ -81,91 +136,45 @@ public class StoreController {
     }
 
     /**
-     * Lấy thông tin cửa hàng theo ID (Public)
      * GET /api/stores/{storeId}
+     * Lấy thông tin chi tiết cửa hàng
+     * 
+     * Public endpoint
      */
     @GetMapping("/{storeId}")
     public ResponseEntity<ApiResponse<StoreResponse>> getStoreById(
             @PathVariable Long storeId) {
         
-        log.info("GET /api/stores/{} - Get store by ID", storeId);
+        log.info("GET /api/stores/{} - Get store detail", storeId);
         
-        StoreResponse store = storeService.getStoreById(storeId);
+        StoreResponse response = storeService.getStoreById(storeId);
         
         return ResponseEntity.ok(
-                ApiResponse.success("Lấy thông tin cửa hàng thành công", store)
+                ApiResponse.success("Lấy thông tin cửa hàng thành công", response)
         );
     }
 
-    /**
-     * Cập nhật thông tin cửa hàng
-     * PUT /api/stores
-     * Yêu cầu: User đã đăng nhập và là chủ cửa hàng
-     */
-    @PutMapping
-    public ResponseEntity<ApiResponse<StoreResponse>> updateStore(
-            @Valid @RequestBody UpdateStoreRequest request) {
+    @GetMapping("/open")
+    public ResponseEntity<ApiResponse<List<StoreListResponse>>> getOpenStores() {
+        log.info("GET /api/stores/open - Get open stores");
         
-        log.info("PUT /api/stores - Update store");
-        
-        StoreResponse store = storeService.updateStore(request);
+        List<StoreListResponse> stores = storeService.getOpenStores();
         
         return ResponseEntity.ok(
-                ApiResponse.success("Cập nhật cửa hàng thành công", store)
+                ApiResponse.success("Lấy danh sách cửa hàng đang mở thành công", stores)
         );
     }
 
-    /**
-     * Toggle trạng thái mở/đóng cửa hàng
-     * PATCH /api/stores/toggle-status
-     * Yêu cầu: User đã đăng nhập và là chủ cửa hàng
-     */
-    @PatchMapping("/toggle-status")
-    public ResponseEntity<ApiResponse<StoreResponse>> toggleStoreStatus() {
+    @GetMapping("/search")
+    public ResponseEntity<ApiResponse<List<StoreListResponse>>> searchStores(
+            @RequestParam String keyword) {
         
-        log.info("PATCH /api/stores/toggle-status - Toggle store status");
+        log.info("GET /api/stores/search?keyword={}", keyword);
         
-        StoreResponse store = storeService.toggleStoreStatus();
+        List<StoreListResponse> stores = storeService.searchStores(keyword);
         
         return ResponseEntity.ok(
-                ApiResponse.success("Cập nhật trạng thái cửa hàng thành công", store)
+                ApiResponse.success("Tìm kiếm cửa hàng thành công", stores)
         );
     }
-
-    /**
-     * Xóa cửa hàng của user hiện tại
-     * DELETE /api/stores
-     * Yêu cầu: User đã đăng nhập và là chủ cửa hàng
-     */
-    @DeleteMapping
-    public ResponseEntity<ApiResponse<Void>> deleteStore() {
-        
-        log.info("DELETE /api/stores - Delete current user's store");
-        
-        storeService.deleteStore();
-        
-        return ResponseEntity.ok(
-                ApiResponse.success("Xóa cửa hàng thành công", null)
-        );
-    }
-
-    /**
-     * Xóa cửa hàng theo ID (Admin only)
-     * DELETE /api/stores/{storeId}
-     * Yêu cầu: ADMIN
-     */
-    @DeleteMapping("/{storeId}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<Void>> deleteStoreById(
-            @PathVariable Long storeId) {
-        
-        log.info("DELETE /api/stores/{} - Delete store by ID (Admin)", storeId);
-        
-        storeService.deleteStoreById(storeId);
-        
-        return ResponseEntity.ok(
-                ApiResponse.success("Xóa cửa hàng thành công", null)
-        );
-    }
-
 }

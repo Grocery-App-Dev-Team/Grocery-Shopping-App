@@ -1,8 +1,8 @@
 package com.grocery.server.store.service;
 
-import com.grocery.server.shared.exception.ResourceNotFoundException;
 import com.grocery.server.shared.exception.BadRequestException;
-import com.grocery.server.store.dto.request.CreateStoreRequest;
+import com.grocery.server.shared.exception.ResourceNotFoundException;
+import com.grocery.server.shared.exception.UnauthorizedException;
 import com.grocery.server.store.dto.request.UpdateStoreRequest;
 import com.grocery.server.store.dto.response.StoreListResponse;
 import com.grocery.server.store.dto.response.StoreResponse;
@@ -12,7 +12,6 @@ import com.grocery.server.user.entity.User;
 import com.grocery.server.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,7 +21,7 @@ import java.util.stream.Collectors;
 
 /**
  * Service: StoreService
- * Mục đích: Xử lý business logic cho Store module
+ * Mô tả: Xử lý business logic cho Store
  */
 @Service
 @RequiredArgsConstructor
@@ -33,170 +32,147 @@ public class StoreService {
     private final UserRepository userRepository;
 
     /**
-     * Tạo cửa hàng mới
+     * Cập nhật thông tin cửa hàng (chỉ owner mới được phép)
      */
     @Transactional
-    public StoreResponse createStore(CreateStoreRequest request) {
-        log.info("Creating new store: {}", request.getStoreName());
-
-        // Lấy user hiện tại
+    public StoreResponse updateStore(Long storeId, UpdateStoreRequest request) {
+        Store store = storeRepository.findById(storeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Store", "id", storeId));
+        
         User currentUser = getCurrentUser();
-
-        // Kiểm tra user đã có cửa hàng chưa
-        if (storeRepository.existsByOwnerId(currentUser.getId())) {
-            throw new BadRequestException("Bạn đã có cửa hàng rồi. Mỗi user chỉ được tạo 1 cửa hàng.");
+        
+        // Kiểm tra quyền: chỉ owner mới được cập nhật
+        if (!store.getOwner().getId().equals(currentUser.getId())) {
+            throw new UnauthorizedException("Bạn không có quyền cập nhật cửa hàng này");
         }
-
-        // Kiểm tra tên cửa hàng đã tồn tại chưa
-        if (storeRepository.findByStoreName(request.getStoreName()).isPresent()) {
-            throw new BadRequestException("Tên cửa hàng đã tồn tại");
+        
+        // Cập nhật thông tin
+        if (request.getStoreName() != null && !request.getStoreName().trim().isEmpty()) {
+            store.setStoreName(request.getStoreName());
         }
-
-        // Tạo store mới
-        Store store = Store.builder()
-                .owner(currentUser)
-                .storeName(request.getStoreName())
-                .address(request.getAddress())
-                .isOpen(true)
-                .build();
-
-        Store savedStore = storeRepository.save(store);
-        log.info("Store created successfully with ID: {}", savedStore.getId());
-
-        return StoreResponse.fromEntity(savedStore);
+        
+        if (request.getAddress() != null && !request.getAddress().trim().isEmpty()) {
+            store.setAddress(request.getAddress());
+        }
+        
+        Store updatedStore = storeRepository.save(store);
+        log.info("Updated store: {}", updatedStore.getId());
+        
+        return StoreResponse.fromEntity(updatedStore);
     }
 
     /**
-     * Lấy thông tin cửa hàng của user hiện tại
+     * Lấy thông tin cửa hàng của mình
      */
     public StoreResponse getMyStore() {
-        log.info("Getting current user's store");
         User currentUser = getCurrentUser();
-
+        
         Store store = storeRepository.findByOwnerId(currentUser.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("Bạn chưa có cửa hàng"));
-
+                .orElseThrow(() -> new ResourceNotFoundException("Store", "ownerId", currentUser.getId()));
+        
         return StoreResponse.fromEntity(store);
     }
 
     /**
-     * Lấy thông tin cửa hàng theo ID
+     * Lấy thông tin chi tiết 1 cửa hàng (public)
      */
     public StoreResponse getStoreById(Long storeId) {
-        log.info("Getting store by ID: {}", storeId);
-
         Store store = storeRepository.findById(storeId)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy cửa hàng với ID: " + storeId));
-
+                .orElseThrow(() -> new ResourceNotFoundException("Store", "id", storeId));
+        
         return StoreResponse.fromEntity(store);
     }
 
     /**
-     * Lấy tất cả cửa hàng
+     * Lấy danh sách tất cả cửa hàng (public)
      */
     public List<StoreListResponse> getAllStores() {
-        log.info("Getting all stores");
-
         List<Store> stores = storeRepository.findAll();
-
+        
         return stores.stream()
                 .map(StoreListResponse::fromEntity)
                 .collect(Collectors.toList());
     }
 
     /**
-     * Cập nhật thông tin cửa hàng
+     * Lấy danh sách cửa hàng đang mở cửa (public)
      */
-    @Transactional
-    public StoreResponse updateStore(UpdateStoreRequest request) {
-        log.info("Updating store");
+    public List<StoreListResponse> getOpenStores() {
+        List<Store> stores = storeRepository.findByIsOpen(true);
+        
+        return stores.stream()
+                .map(StoreListResponse::fromEntity)
+                .collect(Collectors.toList());
+    }
 
-        User currentUser = getCurrentUser();
-
-        Store store = storeRepository.findByOwnerId(currentUser.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("Bạn chưa có cửa hàng"));
-
-        // Cập nhật các trường
-        if (request.getStoreName() != null && !request.getStoreName().isBlank()) {
-            // Kiểm tra tên mới có trùng với cửa hàng khác không
-            storeRepository.findByStoreName(request.getStoreName())
-                    .ifPresent(existingStore -> {
-                        if (!existingStore.getId().equals(store.getId())) {
-                            throw new BadRequestException("Tên cửa hàng đã tồn tại");
-                        }
-                    });
-            store.setStoreName(request.getStoreName());
+    /**
+     * Tìm kiếm cửa hàng theo tên hoặc địa chỉ (public)
+     */
+    public List<StoreListResponse> searchStores(String keyword) {
+        List<Store> stores = storeRepository.findByStoreNameContainingIgnoreCase(keyword);
+        
+        // Nếu không tìm thấy theo tên, thử tìm theo địa chỉ
+        if (stores.isEmpty()) {
+            stores = storeRepository.findByAddressContainingIgnoreCase(keyword);
         }
-
-        if (request.getAddress() != null && !request.getAddress().isBlank()) {
-            store.setAddress(request.getAddress());
-        }
-
-        Store updatedStore = storeRepository.save(store);
-        log.info("Store updated successfully with ID: {}", updatedStore.getId());
-
-        return StoreResponse.fromEntity(updatedStore);
+        
+        return stores.stream()
+                .map(StoreListResponse::fromEntity)
+                .collect(Collectors.toList());
     }
 
     /**
-     * Toggle trạng thái mở/đóng cửa hàng
+     * Mở/đóng cửa hàng (chỉ owner)
      */
     @Transactional
-    public StoreResponse toggleStoreStatus() {
-        log.info("Toggling store status");
-
-        User currentUser = getCurrentUser();
-
-        Store store = storeRepository.findByOwnerId(currentUser.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("Bạn chưa có cửa hàng"));
-
-        store.setIsOpen(!store.getIsOpen());
-
-        Store updatedStore = storeRepository.save(store);
-        log.info("Store status toggled. New status: {}", updatedStore.getIsOpen());
-
-        return StoreResponse.fromEntity(updatedStore);
-    }
-
-    /**
-     * Xóa cửa hàng
-     */
-    @Transactional
-    public void deleteStore() {
-        log.info("Deleting store");
-
-        User currentUser = getCurrentUser();
-
-        Store store = storeRepository.findByOwnerId(currentUser.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("Bạn chưa có cửa hàng"));
-
-        storeRepository.delete(store);
-        log.info("Store deleted successfully with ID: {}", store.getId());
-    }
-
-    /**
-     * Xóa cửa hàng theo ID (Admin)
-     */
-    @Transactional
-    public void deleteStoreById(Long storeId) {
-        log.info("Deleting store by ID: {}", storeId);
-
+    public StoreResponse toggleStoreStatus(Long storeId) {
         Store store = storeRepository.findById(storeId)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy cửa hàng với ID: " + storeId));
-
-        storeRepository.delete(store);
-        log.info("Store deleted successfully with ID: {}", storeId);
+                .orElseThrow(() -> new ResourceNotFoundException("Store", "id", storeId));
+        
+        User currentUser = getCurrentUser();
+        
+        // Kiểm tra quyền: chỉ owner mới được toggle
+        if (!store.getOwner().getId().equals(currentUser.getId())) {
+            throw new UnauthorizedException("Bạn không có quyền thay đổi trạng thái cửa hàng này");
+        }
+        
+        // Toggle trạng thái
+        store.setIsOpen(!store.getIsOpen());
+        Store updatedStore = storeRepository.save(store);
+        
+        log.info("Toggled store status: {} to {}", storeId, updatedStore.getIsOpen());
+        
+        return StoreResponse.fromEntity(updatedStore);
     }
 
     /**
-     * Lấy user hiện tại từ Security Context
+     * Xóa cửa hàng (chỉ owner hoặc admin)
+     */
+    @Transactional
+    public void deleteStore(Long storeId) {
+        Store store = storeRepository.findById(storeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Store", "id", storeId));
+        
+        User currentUser = getCurrentUser();
+        
+        // Kiểm tra quyền: chỉ owner hoặc admin mới được xóa
+        boolean isOwner = store.getOwner().getId().equals(currentUser.getId());
+        boolean isAdmin = currentUser.getRole() == User.UserRole.ADMIN;
+        
+        if (!isOwner && !isAdmin) {
+            throw new UnauthorizedException("Bạn không có quyền xóa cửa hàng này");
+        }
+        
+        storeRepository.delete(store);
+        log.info("Deleted store: {}", storeId);
+    }
+
+    /**
+     * Helper: Lấy thông tin user hiện tại từ SecurityContext
      */
     private User getCurrentUser() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String email = authentication.getName();
-
-        return userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy user"));
+        String phoneNumber = SecurityContextHolder.getContext().getAuthentication().getName();
+        return userRepository.findByPhoneNumber(phoneNumber)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "phoneNumber", phoneNumber));
     }
-
 }
