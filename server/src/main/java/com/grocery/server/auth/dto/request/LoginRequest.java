@@ -11,12 +11,6 @@ import lombok.NoArgsConstructor;
 /**
  * DTO Request: LoginRequest
  * Mục đích: Nhận thông tin đăng nhập từ client
- * 
- * Ví dụ JSON:
- * {
- *   "phoneNumber": "0901234567",
- *   "password": "123456"
- * }
  */
 @Data
 @NoArgsConstructor

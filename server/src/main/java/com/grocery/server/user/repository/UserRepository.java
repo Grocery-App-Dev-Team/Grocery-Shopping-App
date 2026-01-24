@@ -14,11 +14,6 @@ import java.util.List;
  */
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
-<<<<<<< Updated upstream
-
-=======
-    
->>>>>>> Stashed changes
     Optional<User> findByPhoneNumber(String phoneNumber);
     boolean existsByPhoneNumber(String phoneNumber);
     List<User> findByRole(User.UserRole role);

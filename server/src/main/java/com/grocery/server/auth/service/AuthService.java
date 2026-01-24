@@ -69,9 +69,6 @@ public class AuthService {
             if (request.getStoreAddress() == null || request.getStoreAddress().trim().isEmpty()) {
                 throw new BadRequestException("Địa chỉ cửa hàng không được để trống khi đăng ký với tư cách STORE");
             }
-            if (request.getStorePhoneNumber() == null || request.getStorePhoneNumber().trim().isEmpty()) {
-                throw new BadRequestException("Số điện thoại cửa hàng không được để trống khi đăng ký với tư cách STORE");
-            }
         }
         
         // 4. Tạo user mới
@@ -94,9 +91,6 @@ public class AuthService {
                     .owner(user)
                     .storeName(request.getStoreName())
                     .address(request.getStoreAddress())
-                    .phoneNumber(request.getStorePhoneNumber())
-                    .description(request.getStoreDescription())
-                    .imageUrl(request.getStoreImageUrl())
                     .isOpen(true) // Mặc định cửa hàng mở cửa
                     .build();
             
