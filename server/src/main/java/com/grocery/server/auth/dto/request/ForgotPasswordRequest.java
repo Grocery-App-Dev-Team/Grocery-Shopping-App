@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 
 /**
  * DTO: ForgotPasswordRequest
- * Mục đích: Request để reset mật khẩu (tính năng tương lai)
+ * Mục đích: Request để reset mật khẩu 
  */
 @Data
 @NoArgsConstructor
@@ -20,7 +20,5 @@ public class ForgotPasswordRequest {
     @NotBlank(message = "Số điện thoại không được để trống")
     @Pattern(regexp = "^0[0-9]{9}$", message = "Số điện thoại không hợp lệ")
     private String phoneNumber;
-    
-    // TODO: Implement OTP verification
-    // private String otp;
+
 }

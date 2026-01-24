@@ -30,31 +30,6 @@ public class UserController {
 
     private final UserService userService;
 
-    // ========== CUSTOMER/SHIPPER/STORE - USER PROFILE ==========
-
-    /**
-     * GET /api/users/profile
-     * Lấy thông tin profile của user hiện tại
-     * 
-     * Authorization: Bearer token (bất kỳ role nào đã login)
-     * 
-     * Response:
-     * {
-     *   "success": true,
-     *   "message": "Lấy thông tin profile thành công",
-     *   "data": {
-     *     "id": 1,
-     *     "phoneNumber": "0901234567",
-     *     "fullName": "Nguyễn Văn A",
-     *     "avatarUrl": "https://...",
-     *     "address": "123 Đường ABC",
-     *     "role": "CUSTOMER",
-     *     "status": "ACTIVE",
-     *     "createdAt": "2024-01-01T10:00:00",
-     *     "updatedAt": "2024-01-02T15:30:00"
-     *   }
-     * }
-     */
     @GetMapping("/profile")
     public ResponseEntity<ApiResponse<UserProfileResponse>> getCurrentUserProfile() {
         log.info("GET /api/users/profile - Get current user profile");
@@ -66,26 +41,6 @@ public class UserController {
         );
     }
 
-    /**
-     * PUT /api/users/profile
-     * Cập nhật thông tin profile
-     * 
-     * Authorization: Bearer token (bất kỳ role nào đã login)
-     * 
-     * Request Body:
-     * {
-     *   "fullName": "Nguyễn Văn B",
-     *   "address": "456 Đường XYZ",
-     *   "avatarUrl": "https://..."
-     * }
-     * 
-     * Response:
-     * {
-     *   "success": true,
-     *   "message": "Cập nhật profile thành công",
-     *   "data": { ... }
-     * }
-     */
     @PutMapping("/profile")
     public ResponseEntity<ApiResponse<UserProfileResponse>> updateProfile(
             @Valid @RequestBody UpdateProfileRequest request) {
@@ -99,26 +54,6 @@ public class UserController {
         );
     }
 
-    /**
-     * POST /api/users/change-password
-     * Đổi mật khẩu
-     * 
-     * Authorization: Bearer token (bất kỳ role nào đã login)
-     * 
-     * Request Body:
-     * {
-     *   "oldPassword": "123456",
-     *   "newPassword": "newpass123",
-     *   "confirmPassword": "newpass123"
-     * }
-     * 
-     * Response:
-     * {
-     *   "success": true,
-     *   "message": "Đổi mật khẩu thành công",
-     *   "data": null
-     * }
-     */
     @PostMapping("/change-password")
     public ResponseEntity<ApiResponse<Void>> changePassword(
             @Valid @RequestBody ChangePasswordRequest request) {
@@ -132,30 +67,6 @@ public class UserController {
         );
     }
 
-    // ========== ADMIN - USER MANAGEMENT ==========
-
-    /**
-     * GET /api/users
-     * Lấy danh sách tất cả users
-     * 
-     * Authorization: Bearer token (ADMIN only)
-     * 
-     * Response:
-     * {
-     *   "success": true,
-     *   "message": "Lấy danh sách users thành công",
-     *   "data": [
-     *     {
-     *       "id": 1,
-     *       "phoneNumber": "0901234567",
-     *       "fullName": "Nguyễn Văn A",
-     *       "role": "CUSTOMER",
-     *       "status": "ACTIVE"
-     *     },
-     *     ...
-     *   ]
-     * }
-     */
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<List<UserListResponse>>> getAllUsers() {
@@ -168,21 +79,6 @@ public class UserController {
         );
     }
 
-    /**
-     * GET /api/users/role/{role}
-     * Lấy danh sách users theo role
-     * 
-     * Authorization: Bearer token (ADMIN only)
-     * 
-     * Path Variable: role (CUSTOMER, SHIPPER, STORE, ADMIN)
-     * 
-     * Response:
-     * {
-     *   "success": true,
-     *   "message": "Lấy danh sách users theo role thành công",
-     *   "data": [ ... ]
-     * }
-     */
     @GetMapping("/role/{role}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<List<UserListResponse>>> getUsersByRole(
@@ -198,21 +94,6 @@ public class UserController {
         );
     }
 
-    /**
-     * GET /api/users/{userId}
-     * Lấy thông tin chi tiết user theo ID
-     * 
-     * Authorization: Bearer token (ADMIN only)
-     * 
-     * Path Variable: userId
-     * 
-     * Response:
-     * {
-     *   "success": true,
-     *   "message": "Lấy thông tin user thành công",
-     *   "data": { ... }
-     * }
-     */
     @GetMapping("/{userId}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<UserProfileResponse>> getUserById(
@@ -227,21 +108,21 @@ public class UserController {
         );
     }
 
-    /**
-     * PATCH /api/users/{userId}/toggle-status
-     * Cấm/Mở khóa user
-     * 
-     * Authorization: Bearer token (ADMIN only)
-     * 
-     * Path Variable: userId
-     * 
-     * Response:
-     * {
-     *   "success": true,
-     *   "message": "Cập nhật trạng thái user thành công",
-     *   "data": { ... }
-     * }
-     */
+    @GetMapping("/status/{status}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<List<UserListResponse>>> getUsersByStatus(
+            @PathVariable String status) {
+
+        log.info("GET /api/users/role/{} - Get users by status (Admin)", status);
+
+        User.UserStatus userStatus = User.UserStatus.valueOf(status.toUpperCase());
+        List<UserListResponse> users = userService.getUsersByStatus(userStatus);
+
+        return ResponseEntity.ok(
+                ApiResponse.success("Lấy danh sách users theo status thành công", users)
+        );
+    }
+
     @PatchMapping("/{userId}/toggle-status")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<UserProfileResponse>> toggleUserStatus(
@@ -256,21 +137,6 @@ public class UserController {
         );
     }
 
-    /**
-     * DELETE /api/users/{userId}
-     * Xóa user
-     * 
-     * Authorization: Bearer token (ADMIN only)
-     * 
-     * Path Variable: userId
-     * 
-     * Response:
-     * {
-     *   "success": true,
-     *   "message": "Xóa user thành công",
-     *   "data": null
-     * }
-     */
     @DeleteMapping("/{userId}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteUser(
