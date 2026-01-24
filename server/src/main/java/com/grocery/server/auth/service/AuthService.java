@@ -6,6 +6,8 @@ import com.grocery.server.auth.dto.response.AuthResponse;
 import com.grocery.server.auth.security.JwtTokenProvider;
 import com.grocery.server.shared.exception.BadRequestException;
 import com.grocery.server.shared.exception.ResourceNotFoundException;
+import com.grocery.server.store.entity.Store;
+import com.grocery.server.store.repository.StoreRepository;
 import com.grocery.server.user.dto.response.UserProfileResponse;
 import com.grocery.server.user.entity.User;
 import com.grocery.server.user.repository.UserRepository;
@@ -30,27 +32,49 @@ import org.springframework.transaction.annotation.Transactional;
 public class AuthService {
     
     private final UserRepository userRepository;
+    private final StoreRepository storeRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider tokenProvider;
     private final AuthenticationManager authenticationManager;
     
     /**
      * Đăng ký tài khoản mới
+     * 
+     * Logic:
+     * 1. Kiểm tra số điện thoại đã tồn tại chưa
+     * 2. Validate role (không cho tự đăng ký ADMIN)
+     * 3. Nếu role = STORE → validate thông tin cửa hàng
+     * 4. Tạo User và lưu vào DB
+     * 5. Nếu role = STORE → tự động tạo Store liên kết
+     * 6. Trả về JWT token
      */
     @Transactional
     public AuthResponse register(RegisterRequest request) {
-        // Kiểm tra số điện thoại đã tồn tại chưa
+        // 1. Kiểm tra số điện thoại đã tồn tại chưa
         if (userRepository.existsByPhoneNumber(request.getPhoneNumber())) {
             throw new BadRequestException(
                 "Số điện thoại " + request.getPhoneNumber() + " đã được sử dụng");
         }
         
-        // Validate role (không cho phép tự đăng ký làm ADMIN)
+        // 2. Validate role (không cho phép tự đăng ký làm ADMIN)
         if (request.getRole() == User.UserRole.ADMIN) {
             throw new BadRequestException("Không thể tự đăng ký tài khoản ADMIN");
         }
         
-        // Tạo user mới
+        // 3. Nếu role = STORE → validate thông tin cửa hàng bắt buộc
+        if (request.getRole() == User.UserRole.STORE) {
+            if (request.getStoreName() == null || request.getStoreName().trim().isEmpty()) {
+                throw new BadRequestException("Tên cửa hàng không được để trống khi đăng ký với tư cách STORE");
+            }
+            if (request.getStoreAddress() == null || request.getStoreAddress().trim().isEmpty()) {
+                throw new BadRequestException("Địa chỉ cửa hàng không được để trống khi đăng ký với tư cách STORE");
+            }
+            if (request.getStorePhoneNumber() == null || request.getStorePhoneNumber().trim().isEmpty()) {
+                throw new BadRequestException("Số điện thoại cửa hàng không được để trống khi đăng ký với tư cách STORE");
+            }
+        }
+        
+        // 4. Tạo user mới
         User user = User.builder()
                 .phoneNumber(request.getPhoneNumber())
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
@@ -61,13 +85,31 @@ public class AuthService {
                 .avatarUrl(request.getAvatarUrl())
                 .build();
         
-        // Lưu vào database
+        // Lưu User vào database
         user = userRepository.save(user);
         
-        log.info("User registered successfully: {} with role {}", 
-                user.getPhoneNumber(), user.getRole());
+        // 5. Nếu role = STORE → tự động tạo Store
+        if (request.getRole() == User.UserRole.STORE) {
+            Store store = Store.builder()
+                    .owner(user)
+                    .storeName(request.getStoreName())
+                    .address(request.getStoreAddress())
+                    .phoneNumber(request.getStorePhoneNumber())
+                    .description(request.getStoreDescription())
+                    .imageUrl(request.getStoreImageUrl())
+                    .isOpen(true) // Mặc định cửa hàng mở cửa
+                    .build();
+            
+            storeRepository.save(store);
+            
+            log.info("User registered with STORE role: {} - Store created: {}", 
+                    user.getPhoneNumber(), store.getStoreName());
+        } else {
+            log.info("User registered successfully: {} with role {}", 
+                    user.getPhoneNumber(), user.getRole());
+        }
         
-        // Tạo JWT token
+        // 6. Tạo JWT token
         String token = tokenProvider.generateToken(user.getPhoneNumber());
         
         // Trả về response
