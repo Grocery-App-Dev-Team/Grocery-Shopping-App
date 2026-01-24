@@ -31,93 +31,49 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /**
-     * Số điện thoại - Dùng làm tài khoản đăng nhập
-     * Unique: Không được trùng
-     */
     @Column(name = "phone_number", unique = true, nullable = false, length = 15)
     private String phoneNumber;
 
-    /**
-     * Mật khẩu đã mã hóa (BCrypt)
-     */
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 
-    /**
-     * Vai trò tài khoản:
-     * - CUSTOMER: Khách hàng
-     * - SHIPPER: Tài xế giao hàng
-     * - STORE: Chủ cửa hàng
-     * - ADMIN: Quản trị viên
-     */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private UserRole role;
 
-    /**
-     * Trạng thái tài khoản:
-     */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default
     private UserStatus status = UserStatus.ACTIVE;
 
-    /**
-     * Họ và tên người dùng
-     */
     @Column(name = "full_name", length = 100)
     private String fullName;
 
-    /**
-     * Đường dẫn ảnh đại diện
-     */
     @Column(name = "avatar_url")
     private String avatarUrl;
 
-    /**
-     * Địa chỉ cá nhân
-     */
     @Column(length = 255)
     private String address;
 
-    /**
-     * Thời gian tạo tài khoản
-     */
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
-    /**
-     * Thời gian cập nhật thông tin gần nhất
-     */
     @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
     // ========== RELATIONSHIPS ==========
 
-    /**
-     * Nếu user có role = STORE → có 1 cửa hàng
-     */
     @OneToOne(mappedBy = "owner", cascade = CascadeType.ALL, orphanRemoval = true)
     private Store store;
 
-    /**
-     * Nếu user có role = CUSTOMER → có nhiều đơn hàng
-     */
     @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Order> customerOrders;
 
-    /**
-     * Nếu user có role = SHIPPER → nhận nhiều đơn giao hàng
-     */
     @OneToMany(mappedBy = "shipper", cascade = CascadeType.ALL)
     private List<Order> shipperOrders;
 
-    /**
-     * Đánh giá đã viết
-     */
     @OneToMany(mappedBy = "reviewer", cascade = CascadeType.ALL)
     private List<Review> reviews;
 

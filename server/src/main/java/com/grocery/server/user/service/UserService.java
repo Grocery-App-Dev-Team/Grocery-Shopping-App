@@ -143,7 +143,6 @@ public class UserService {
 
     /**
      * Xóa user (Admin only)
-     * Lưu ý: Cẩn thận khi xóa, nên dùng soft delete trong production
      */
     @Transactional
     public void deleteUser(Long userId) {

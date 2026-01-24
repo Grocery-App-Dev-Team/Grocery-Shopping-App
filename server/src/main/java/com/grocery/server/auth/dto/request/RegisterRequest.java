@@ -10,6 +10,12 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+
+/**
+ * DTO Request: RegisterRequest
+ * Mục đích: Nhận thông tin đăng ký từ client
+**/
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -20,7 +26,6 @@ public class RegisterRequest {
     @NotBlank(message = "Số điện thoại không được để trống")
     @Pattern(regexp = "^0[0-9]{9}$", message = "Số điện thoại không hợp lệ (phải có 10 chữ số, bắt đầu bằng 0)")
     private String phoneNumber;
-    
 
     @NotBlank(message = "Mật khẩu không được để trống")
     @Size(min = 6, message = "Mật khẩu phải có ít nhất 6 ký tự")
@@ -29,14 +34,25 @@ public class RegisterRequest {
     @NotBlank(message = "Họ tên không được để trống")
     @Size(max = 100, message = "Họ tên không được quá 100 ký tự")
     private String fullName;
-    
 
     @NotNull(message = "Vai trò không được để trống")
     private User.UserRole role;
-    
 
     @Size(max = 255, message = "Địa chỉ không được quá 255 ký tự")
     private String address;
 
     private String avatarUrl;
+    
+    @Size(max = 100, message = "Tên cửa hàng không được quá 100 ký tự")
+    private String storeName;
+
+    @Size(max = 500, message = "Địa chỉ cửa hàng không được quá 500 ký tự")
+    private String storeAddress;
+
+    @Pattern(regexp = "^$|^0[0-9]{9}$", message = "Số điện thoại cửa hàng không hợp lệ")
+    private String storePhoneNumber;
+
+    private String storeDescription;
+
+    private String storeImageUrl;
 }
