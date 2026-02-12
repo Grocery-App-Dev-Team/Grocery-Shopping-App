@@ -30,110 +30,81 @@
 - [x] Admin: Toggle User Status (Ban/Unban)
 - [x] Admin: Delete User
 
----
+### Module 3: Store Management ✅ (90% HOÀN THÀNH)
+- [x] Store Entity
+- [x] StoreRepository với custom queries
+- [x] Store DTOs (CreateStoreRequest, UpdateStoreRequest, StoreResponse)
+- [x] StoreService với business logic
+- [x] StoreController với REST APIs
+- [x] APIs: GET /stores, GET /stores/{id}, GET /stores/my-store, PUT /stores/{id}, PATCH /stores/{id}/toggle-status, GET /stores/search
+- [ ] Một số tối ưu hóa query còn thiếu
 
-## 🔄 ĐANG LÀM (In Progress)
-
-### Module 3: Store Management
-- [ ] **Store Entity** (đã có base entity)
-  - [ ] Review và update relationships
-- [ ] **StoreRepository**
-  - [ ] findByOwnerId
-  - [ ] findByIsOpen
-  - [ ] searchByStoreName
-  - [ ] findNearbyStores (có thể dùng coordinates)
-- [ ] **Store DTOs**
-  - [ ] CreateStoreRequest
-  - [ ] UpdateStoreRequest
-  - [ ] StoreResponse
-  - [ ] StoreListResponse
-  - [ ] StoreDetailResponse (với products)
-- [ ] **StoreService**
-  - [ ] createStore (STORE role only)
-  - [ ] updateStore
-  - [ ] getMyStore (owner)
-  - [ ] getAllStores (customer view)
-  - [ ] getStoreById
-  - [ ] toggleStoreStatus (open/close)
-  - [ ] deleteStore (admin only)
-  - [ ] searchStores
-- [ ] **StoreController**
-  - [ ] POST /api/stores (create store)
-  - [ ] PUT /api/stores/{id} (update store)
-  - [ ] GET /api/stores/my-store (owner)
-  - [ ] GET /api/stores (all stores)
-  - [ ] GET /api/stores/{id} (store detail)
-  - [ ] PATCH /api/stores/{id}/toggle-status
-  - [ ] DELETE /api/stores/{id} (admin)
-  - [ ] GET /api/stores/search?name=...
+### Module 4: Product Management ✅ (100% HOÀN THÀNH)
+- [x] **Category Entity** 
+  - [x] Review relationships
+- [x] **Product Entity** 
+  - [x] Review relationships
+- [x] **ProductUnit Entity** 
+  - [x] Review relationships với OrderItem
+- [x] **CategoryRepository**
+  - [x] findAll (list categories)
+  - [x] findByName
+  - [x] existsByName
+- [x] **ProductRepository**
+  - [x] findByStoreId
+  - [x] findByCategoryId ✅ MỚI
+  - [x] findByStatus
+  - [x] searchByKeyword
+  - [x] findByStoreIdAndStatus
+  - [x] findAvailableProductsByStore
+  - [x] countByCategoryId
+- [x] **Category DTOs**
+  - [x] CreateCategoryRequest
+  - [x] UpdateCategoryRequest
+  - [x] CategoryResponse
+- [x] **Product DTOs**
+  - [x] CreateProductRequest
+  - [x] UpdateProductRequest
+  - [x] ProductResponse (với units)
+  - [x] ProductUnitRequest
+- [x] **CategoryService**
+  - [x] getAllCategories
+  - [x] getCategoryById
+  - [x] createCategory (admin)
+  - [x] updateCategory (admin)
+  - [x] deleteCategory (admin)
+- [x] **ProductService**
+  - [x] createProduct (store owner)
+  - [x] updateProduct (store owner)
+  - [x] deleteProduct (store owner)
+  - [x] getProductById
+  - [x] getAllProducts
+  - [x] getProductsByStore
+  - [x] getProductsByCategory ✅ MỚI
+  - [x] getAvailableProductsByStore
+  - [x] searchProducts
+  - [x] toggleProductStatus
+- [x] **CategoryController** - `/api/categories`
+  - [x] GET /api/categories (all categories - public)
+  - [x] GET /api/categories/{id} (public)
+  - [x] POST /api/categories (admin only - @PreAuthorize)
+  - [x] PUT /api/categories/{id} (admin only - @PreAuthorize)
+  - [x] DELETE /api/categories/{id} (admin only - @PreAuthorize)
+- [x] **ProductController** - `/api/products`
+  - [x] POST /api/products (store owner - @PreAuthorize)
+  - [x] PUT /api/products/{id} (store owner - @PreAuthorize)
+  - [x] DELETE /api/products/{id} (store owner - @PreAuthorize)
+  - [x] PATCH /api/products/{id}/toggle-status (store owner - @PreAuthorize)
+  - [x] GET /api/products (all products - public)
+  - [x] GET /api/products/{id} (public)
+  - [x] GET /api/products/store/{storeId} (public)
+  - [x] GET /api/products/store/{storeId}/available (public)
+  - [x] GET /api/products/category/{categoryId} ✅ MỚI (public)
+  - [x] GET /api/products/search?keyword=... (public)
 
 ---
 
 ## 📝 CẦN LÀM (To Do)
-
-### Module 4: Product Management ⏳
-- [ ] **Category Entity** (đã có base)
-  - [ ] Review relationships
-- [ ] **Product Entity** (đã có base)
-  - [ ] Review relationships
-- [ ] **ProductUnit Entity** (đã có base)
-  - [ ] Review relationships với OrderItem
-- [ ] **CategoryRepository**
-  - [ ] findAll (list categories)
-  - [ ] findByName
-- [ ] **ProductRepository**
-  - [ ] findByStoreId
-  - [ ] findByCategoryId
-  - [ ] findByStatus
-  - [ ] searchByName
-  - [ ] findByStoreIdAndStatus
-- [ ] **Category DTOs**
-  - [ ] CategoryResponse
-  - [ ] CategoryListResponse
-- [ ] **Product DTOs**
-  - [ ] CreateProductRequest
-  - [ ] UpdateProductRequest
-  - [ ] ProductResponse
-  - [ ] ProductListResponse
-  - [ ] ProductDetailResponse (với units)
-  - [ ] ProductUnitRequest
-  - [ ] ProductUnitResponse
-- [ ] **CategoryService**
-  - [ ] getAllCategories
-  - [ ] getCategoryById
-  - [ ] createCategory (admin)
-  - [ ] updateCategory (admin)
-  - [ ] deleteCategory (admin)
-- [ ] **ProductService**
-  - [ ] createProduct (store owner)
-  - [ ] updateProduct (store owner)
-  - [ ] deleteProduct (store owner)
-  - [ ] getProductById
-  - [ ] getProductsByStore
-  - [ ] getProductsByCategory
-  - [ ] searchProducts
-  - [ ] toggleProductStatus
-  - [ ] addProductUnit
-  - [ ] updateProductUnit
-  - [ ] deleteProductUnit
-- [ ] **CategoryController**
-  - [ ] GET /api/categories (all categories)
-  - [ ] GET /api/categories/{id}
-  - [ ] POST /api/admin/categories (admin only)
-  - [ ] PUT /api/admin/categories/{id}
-  - [ ] DELETE /api/admin/categories/{id}
-- [ ] **ProductController**
-  - [ ] POST /api/products (store owner)
-  - [ ] PUT /api/products/{id}
-  - [ ] DELETE /api/products/{id}
-  - [ ] GET /api/products/{id}
-  - [ ] GET /api/products/store/{storeId}
-  - [ ] GET /api/products/category/{categoryId}
-  - [ ] GET /api/products/search?name=...
-  - [ ] PATCH /api/products/{id}/toggle-status
-  - [ ] POST /api/products/{id}/units
-  - [ ] PUT /api/products/{id}/units/{unitId}
-  - [ ] DELETE /api/products/{id}/units/{unitId}
 
 ### Module 5: Order Management ⏳ (Phức tạp nhất)
 - [ ] **Order Entity** (đã có base)

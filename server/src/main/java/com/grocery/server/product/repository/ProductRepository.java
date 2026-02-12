@@ -27,6 +27,12 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     List<Product> findByStoreId(Long storeId);
     
     /**
+     * Tìm sản phẩm theo category_id
+     * SQL: SELECT * FROM products WHERE category_id = ?
+     */
+    List<Product> findByCategoryId(Long categoryId);
+    
+    /**
      * Tìm sản phẩm theo store_id và category_id
      * SQL: SELECT * FROM products WHERE store_id = ? AND category_id = ?
      */
@@ -49,6 +55,12 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
      * SQL: SELECT COUNT(*) FROM products WHERE store_id = ?
      */
     long countByStoreId(Long storeId);
+    
+    /**
+     * Đếm số sản phẩm theo danh mục
+     * SQL: SELECT COUNT(*) FROM products WHERE category_id = ?
+     */
+    long countByCategoryId(Long categoryId);
     
     /**
      * Kiểm tra sản phẩm có tồn tại không

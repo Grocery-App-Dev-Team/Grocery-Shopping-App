@@ -54,6 +54,10 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/stores/open").permitAll()
                 .requestMatchers(HttpMethod.GET, "/stores/search").permitAll()
                 
+                // Category & Product public endpoints (GET only)
+                .requestMatchers(HttpMethod.GET, "/categories/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/products/**").permitAll()
+                
                 // ========== PROTECTED ENDPOINTS (Cần authentication + role) ==========
                 
                 // Store management endpoints (STORE role only)
@@ -61,6 +65,17 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.PUT, "/stores/**").hasRole("STORE")
                 .requestMatchers(HttpMethod.PATCH, "/stores/**").hasRole("STORE")
                 .requestMatchers(HttpMethod.DELETE, "/stores/**").hasAnyRole("STORE", "ADMIN")
+                
+                // Product management endpoints (STORE role only)
+                .requestMatchers(HttpMethod.POST, "/products").hasRole("STORE")
+                .requestMatchers(HttpMethod.PUT, "/products/**").hasRole("STORE")
+                .requestMatchers(HttpMethod.PATCH, "/products/**").hasRole("STORE")
+                .requestMatchers(HttpMethod.DELETE, "/products/**").hasRole("STORE")
+                
+                // Category management endpoints (ADMIN only)
+                .requestMatchers(HttpMethod.POST, "/categories").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/categories/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/categories/**").hasRole("ADMIN")
                 
                 // User endpoints (authenticated users)
                 .requestMatchers("/users/profile/**").authenticated()
