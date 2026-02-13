@@ -9,7 +9,7 @@ xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/x
         <relativePath/>
     </parent>
     <groupId>com.grocery</groupId>
-    <artifactId>server</artifactId>
+    <artifactId>backend</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>server</name>
     <description>Grocery-Shopping-App</description>

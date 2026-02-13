@@ -1,9 +1,9 @@
 # Cấu trúc: [Folder]  [Tên-Org]/[Tên-Team]
 
 # Folder backend thì bắt buộc team backend review
-/mobile/     @Grocery-App-Dev-Team/backend
+/backend/     @Grocery-App-Dev-Team/backend
 
 # Folder frontend thì bắt buộc team frontend review
-/client/    @Grocery-App-Dev-Team/frontend
+/frontend/    @Grocery-App-Dev-Team/frontend
 
 * @Scarlet7153
