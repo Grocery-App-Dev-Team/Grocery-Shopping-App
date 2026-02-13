@@ -1,8 +1,5 @@
-# 📋 BACKEND DEVELOPMENT PLAN - Grocery Shopping App
-
-## ✅ ĐÃ HOÀN THÀNH (Completed)
-
-### Module 1: Authentication & Authorization ✅
+# BACKEND DEVELOPMENT PLAN - Grocery Shopping App
+### Module 1: Authentication & Authorization 
 - [x] User Entity với roles (CUSTOMER, SHIPPER, STORE, ADMIN)
 - [x] JWT Token Provider
 - [x] Security Configuration (Spring Security)
@@ -17,7 +14,7 @@
 - [x] Custom Exceptions: ResourceNotFoundException, BadRequestException, UnauthorizedException
 - [x] GlobalExceptionHandler với exception handling đầy đủ
 
-### Module 2: User Management ✅
+### Module 2: User Management 
 - [x] UserRepository với custom queries
 - [x] UserService với business logic
 - [x] UserController với REST APIs
@@ -30,7 +27,7 @@
 - [x] Admin: Toggle User Status (Ban/Unban)
 - [x] Admin: Delete User
 
-### Module 3: Store Management ✅ (90% HOÀN THÀNH)
+### Module 3: Store Management 
 - [x] Store Entity
 - [x] StoreRepository với custom queries
 - [x] Store DTOs (CreateStoreRequest, UpdateStoreRequest, StoreResponse)
@@ -39,7 +36,7 @@
 - [x] APIs: GET /stores, GET /stores/{id}, GET /stores/my-store, PUT /stores/{id}, PATCH /stores/{id}/toggle-status, GET /stores/search
 - [ ] Một số tối ưu hóa query còn thiếu
 
-### Module 4: Product Management ✅ (100% HOÀN THÀNH)
+### Module 4: Product Management 
 - [x] **Category Entity** 
   - [x] Review relationships
 - [x] **Product Entity** 
@@ -52,7 +49,7 @@
   - [x] existsByName
 - [x] **ProductRepository**
   - [x] findByStoreId
-  - [x] findByCategoryId ✅ MỚI
+  - [x] findByCategoryId 
   - [x] findByStatus
   - [x] searchByKeyword
   - [x] findByStoreIdAndStatus
@@ -99,60 +96,58 @@
   - [x] GET /api/products/{id} (public)
   - [x] GET /api/products/store/{storeId} (public)
   - [x] GET /api/products/store/{storeId}/available (public)
-  - [x] GET /api/products/category/{categoryId} ✅ MỚI (public)
+  - [x] GET /api/products/category/{categoryId} (public)
   - [x] GET /api/products/search?keyword=... (public)
 
 ---
 
-## 📝 CẦN LÀM (To Do)
 
-### Module 5: Order Management ⏳ (Phức tạp nhất)
-- [ ] **Order Entity** (đã có base)
-  - [ ] Review relationships
-- [ ] **OrderItem Entity** (đã có base)
-  - [ ] Review relationships
-- [ ] **OrderRepository**
-  - [ ] findByCustomerId
-  - [ ] findByStoreId
-  - [ ] findByShipperId
-  - [ ] findByStatus
-  - [ ] findByCustomerIdAndStatus
-  - [ ] findPendingOrders (for shippers)
-- [ ] **OrderItemRepository**
-  - [ ] findByOrderId
-- [ ] **Order DTOs**
-  - [ ] CreateOrderRequest
-  - [ ] UpdateOrderRequest
-  - [ ] OrderResponse
-  - [ ] OrderListResponse
-  - [ ] OrderDetailResponse (với OrderItems)
-  - [ ] OrderItemRequest
-  - [ ] OrderItemResponse
-- [ ] **OrderService**
-  - [ ] createOrder (customer)
-  - [ ] getMyOrders (customer)
-  - [ ] getOrderById
-  - [ ] getStoreOrders (store owner)
-  - [ ] confirmOrder (store owner)
-  - [ ] cancelOrder (customer/store)
-  - [ ] getPendingOrders (for shippers)
-  - [ ] acceptOrder (shipper)
-  - [ ] updateOrderStatus (shipper)
-  - [ ] completeOrder (shipper - upload POD)
-  - [ ] getAllOrders (admin)
-  - [ ] calculateTotalAmount
-- [ ] **OrderController**
-  - [ ] POST /api/orders (create order - customer)
-  - [ ] GET /api/orders/my-orders (customer orders)
-  - [ ] GET /api/orders/{id} (order detail)
-  - [ ] GET /api/orders/store (store orders)
-  - [ ] PATCH /api/orders/{id}/confirm (store confirm)
-  - [ ] PATCH /api/orders/{id}/cancel (cancel order)
-  - [ ] GET /api/orders/pending (pending orders for shippers)
-  - [ ] PATCH /api/orders/{id}/accept (shipper accept)
-  - [ ] PATCH /api/orders/{id}/status (update status)
-  - [ ] POST /api/orders/{id}/complete (complete with POD)
-  - [ ] GET /api/admin/orders (all orders - admin)
+### Module 5: Order Management ✅ (COMPLETED)
+- [x] **Order Entity** 
+  - [x] Relationships: @ManyToOne với Customer, Store, Shipper
+  - [x] @OneToMany với OrderItems
+  - [x] Enum OrderStatus: PENDING, CONFIRMED, PICKING_UP, DELIVERING, DELIVERED, CANCELLED
+- [x] **OrderItem Entity** 
+  - [x] Relationships: @ManyToOne với Order, Product, ProductUnit
+- [x] **OrderRepository**
+  - [x] findByCustomerId
+  - [x] findByStoreId
+  - [x] findByShipperId
+  - [x] findByStatus
+  - [x] findAvailableOrdersForShipper (for shippers)
+- [x] **OrderItemRepository**
+  - [x] findByOrderId
+- [x] **Order DTOs**
+  - [x] CreateOrderRequest (với List<OrderItemRequest>)
+  - [x] UpdateOrderStatusRequest
+  - [x] OrderResponse (detailed với OrderItems list)
+  - [x] OrderItemRequest (productUnitId, quantity)
+  - [x] OrderItemResponse (full product info)
+- [x] **OrderService** (với State Machine logic)
+  - [x] createOrder (customer) - tính tổng tiền + phí ship 15,000đ
+  - [x] getMyOrders (customer)
+  - [x] getOrderById (with authorization check)
+  - [x] getOrdersByStoreOwner (store owner) - 🔒 Security: lấy từ token
+  - [x] getMyDeliveries (shipper)
+  - [x] getAvailableOrders (shipper)
+  - [x] assignShipperToOrder (shipper)
+  - [x] updateOrderStatus (with role-based state machine)
+  - [x] calculateTotalAmount (helper method)
+- [x] **OrderController** (8 endpoints)
+  - [x] POST /api/orders (create order - CUSTOMER)
+  - [x] GET /api/orders/my-orders (customer orders)
+  - [x] GET /api/orders/{id} (order detail - authorized)
+  - [x] GET /api/orders/my-store-orders (store orders - 🔒 từ token)
+  - [x] GET /api/orders/my-deliveries (shipper deliveries)
+  - [x] GET /api/orders/available (available orders - SHIPPER)
+  - [x] PATCH /api/orders/{id}/status (update status with state machine)
+  - [x] POST /api/orders/{id}/assign-shipper (shipper accept order)
+- [x] **Security Enhancement**
+  - [x] Store endpoint không dùng storeId parameter
+  - [x] Store orders được filter theo token của user
+  - [x] Validation role trước khi truy cập orders
+- [x] **Documentation**
+  - [x] ORDER_REQUESTS_FOR_POSTMAN.md (8 endpoints + E2E scenarios)
 
 ### Module 6: Payment Management ⏳
 - [ ] **Payment Entity** (đã có base)
@@ -287,7 +282,7 @@
 - [ ] Product Module (3-4 days)
 
 ### Week 3-4: Business Logic
-- [ ] Order Module (5-6 days) - Most complex
+- [x] Order Module ✅ (5-6 days) - Completed with state machine
 - [ ] Payment Module (2-3 days)
 - [ ] Review Module (2-3 days)
 
@@ -308,28 +303,30 @@
 
 ## 🎯 NEXT IMMEDIATE TASKS (Prioritized)
 
-1. **Store Module** - Bắt đầu ngay
-   - Create StoreRepository với custom queries
-   - Create Store DTOs
-   - Implement StoreService
-   - Implement StoreController
-   - Test APIs
+1. ~~**Store Module**~~ ✅ COMPLETED
 
-2. **Product Module** - Sau Store
-   - Create Category system
-   - Create ProductRepository
-   - Create Product DTOs với ProductUnits
-   - Implement ProductService
-   - Implement ProductController
-   - Test APIs
+2. ~~**Product Module**~~ ✅ COMPLETED
 
-3. **Order Module** - Core business logic
-   - Design order workflow carefully
-   - Create OrderRepository với complex queries
-   - Create Order DTOs
-   - Implement OrderService với state machine
-   - Implement OrderController
-   - Test order flow end-to-end
+3. ~~**Order Module**~~ ✅ COMPLETED
+   - ✅ State machine: PENDING → CONFIRMED → PICKING_UP → DELIVERING → DELIVERED
+   - ✅ Role-based transitions (STORE confirms, SHIPPER delivers)
+   - ✅ Security: Store orders filtered by authenticated user
+   - ✅ 8 REST endpoints with proper @PreAuthorize
+
+4. **Payment Module** - NEXT PRIORITY
+   - Integrate với MoMo payment gateway
+   - Create PaymentRepository với queries
+   - Create Payment DTOs
+   - Implement PaymentService
+   - Implement PaymentController
+   - Test payment flow
+
+5. **Review Module** - After Payment
+   - Only customers who completed orders can review
+   - Rating calculation for stores
+   - Create ReviewRepository
+   - Create Review DTOs
+   - Implement ReviewService & Controller
 
 ---
 
@@ -386,15 +383,18 @@
 ## 📱 FRONTEND SYNC NOTES
 
 ### ✅ APIs Ready for Frontend:
-- **Auth APIs** - Frontend có thể bắt đầu code Auth screens
-- **User APIs** - Frontend có thể code Profile/Settings screens  
-- **Store APIs** - Frontend có thể code Store list/detail screens (90%)
+- **Auth APIs** ✅ - Frontend có thể bắt đầu code Auth screens
+- **User APIs** ✅ - Frontend có thể code Profile/Settings screens  
+- **Store APIs** ✅ - Frontend có thể code Store list/detail screens
+- **Product APIs** ✅ - Frontend có thể code Product catalog & shopping
+- **Order APIs** ✅ - Frontend có thể code Shopping cart & checkout flow
+  - 8 endpoints: Create order, My orders, Order detail, Store orders, Shipper flows
+  - State machine: PENDING → CONFIRMED → PICKING_UP → DELIVERING → DELIVERED
 
 ### ⏳ APIs Cần Hoàn Thành Trước:
-- **Product APIs** - Cần xong trước khi Frontend code Product screens
-- **Order APIs** - Cần xong trước khi Frontend code Shopping cart & checkout
-- **Payment APIs** - Cần xong trước khi Frontend integrate MoMo
+- **Payment APIs** - Cần xong trước khi Frontend integrate MoMo/ZaloPay
 - **File Upload APIs** - Cần cho avatar, product images, POD photos
+- **Review APIs** - Cần cho rating & review sau khi hoàn thành order
 
 ### 🔔 Backend Cần Bổ Sung:
 - [ ] WebSocket configuration (cho real-time order tracking)
@@ -405,7 +405,8 @@
 
 ---
 
-**Last Updated**: 2026-02-12
-**Progress**: 2/7 modules completed (28%)
-**Next Focus**: Product Module → Order Module → Payment Module
-**Frontend Status**: Synced with MySQL backend, waiting for Product & Order APIs
+**Last Updated**: 2026-02-13
+**Progress**: 5/7 modules completed (71%) 🎉
+**Completed**: Auth ✅ User ✅ Store ✅ Product ✅ Order ✅
+**Next Focus**: Payment Module → Review Module → Advanced Features
+**Frontend Status**: Core APIs ready! Can implement Shopping, Cart, Checkout flows
