@@ -89,6 +89,14 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     List<Product> searchByKeyword(@Param("keyword") String keyword);
     
     /**
+     * Tìm ProductUnit theo ID (dùng cho Order Module)
+     * @param productUnitId ID của product_units
+     * @return ProductUnit nếu tìm thấy
+     */
+    @Query("SELECT pu FROM ProductUnit pu WHERE pu.id = :productUnitId")
+    java.util.Optional<com.grocery.server.product.entity.ProductUnit> findProductUnitById(@Param("productUnitId") Long productUnitId);
+    
+    /**
      * Lấy top sản phẩm bán chạy (dựa vào số lượng order_items)
      */
     @Query(value = 
