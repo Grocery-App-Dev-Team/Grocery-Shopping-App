@@ -53,6 +53,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/stores").permitAll()
                 .requestMatchers(HttpMethod.GET, "/stores/open").permitAll()
                 .requestMatchers(HttpMethod.GET, "/stores/search").permitAll()
+                .requestMatchers(HttpMethod.GET, "/stores/*").permitAll()
                 
                 // Category & Product public endpoints (GET only)
                 .requestMatchers(HttpMethod.GET, "/categories/**").permitAll()
@@ -61,7 +62,7 @@ public class SecurityConfig {
                 // ========== PROTECTED ENDPOINTS (Cần authentication + role) ==========
                 
                 // Store management endpoints (STORE role only)
-                 .requestMatchers(HttpMethod.GET, "/stores/my-store").hasRole("STORE")
+                .requestMatchers(HttpMethod.GET, "/stores/my-store").hasRole("STORE")
                 .requestMatchers(HttpMethod.PUT, "/stores/**").hasRole("STORE")
                 .requestMatchers(HttpMethod.PATCH, "/stores/**").hasRole("STORE")
                 .requestMatchers(HttpMethod.DELETE, "/stores/**").hasAnyRole("STORE", "ADMIN")
@@ -76,6 +77,16 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/categories").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.PUT, "/categories/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/categories/**").hasRole("ADMIN")
+                
+                // Order endpoints (role-based access defined in controller with @PreAuthorize)
+                .requestMatchers(HttpMethod.POST, "/orders").hasRole("CUSTOMER")
+                .requestMatchers(HttpMethod.GET, "/orders/my-orders").hasRole("CUSTOMER")
+                .requestMatchers(HttpMethod.GET, "/orders/my-store-orders").hasRole("STORE")
+                .requestMatchers(HttpMethod.GET, "/orders/my-deliveries").hasRole("SHIPPER")
+                .requestMatchers(HttpMethod.GET, "/orders/available").hasRole("SHIPPER")
+                .requestMatchers(HttpMethod.POST, "/orders/*/assign-shipper").hasRole("SHIPPER")
+                .requestMatchers(HttpMethod.GET, "/orders/*").authenticated()
+                .requestMatchers(HttpMethod.PATCH, "/orders/*/status").authenticated()
                 
                 // User endpoints (authenticated users)
                 .requestMatchers("/users/profile/**").authenticated()
