@@ -1,11 +1,64 @@
 import 'package:flutter/material.dart';
-import 'app_config.dart';
+import '../../../core/enums/app_type.dart';
+
+class AppConfiguration {
+  final int primaryColor;
+  final String appName;
+  final String appId;
+  final List<String> allowedRoutes;
+
+  const AppConfiguration({
+    required this.primaryColor,
+    required this.appName,
+    required this.appId,
+    this.allowedRoutes = const [],
+  });
+}
+
+class AppConfig {
+  static AppType currentApp = AppType.customer;
+
+  static final Map<AppType, AppConfiguration> _configs = {
+    AppType.customer: const AppConfiguration(
+      primaryColor: 0xFF4CAF50,
+      appName: 'Đi Chợ Hộ - Khách Hàng',
+      appId: 'com.dichohho.customer',
+      allowedRoutes: ['/home', '/auth'],
+    ),
+    AppType.store: const AppConfiguration(
+      primaryColor: 0xFF2196F3,
+      appName: 'Đi Chợ Hộ - Chủ Cửa Hàng',
+      appId: 'com.dichohho.store',
+      allowedRoutes: ['/store', '/auth'],
+    ),
+    AppType.shipper: const AppConfiguration(
+      primaryColor: 0xFFFF9800,
+      appName: 'Đi Chợ Hộ - Shipper',
+      appId: 'com.dichohho.shipper',
+      allowedRoutes: ['/shipper', '/auth'],
+    ),
+    AppType.admin: const AppConfiguration(
+      primaryColor: 0xFF9C27B0,
+      appName: 'Đi Chợ Hộ - Quản Trị Viên',
+      appId: 'com.dichohho.admin',
+      allowedRoutes: ['/admin', '/auth'],
+    ),
+  };
+
+  static AppConfiguration getConfig(AppType type) => _configs[type]!;
+  static AppConfiguration get current => getConfig(currentApp);
+  static void switchApp(AppType type) => currentApp = type;
+
+  static String get appName => current.appName;
+  static String get appId => current.appId;
+}
 
 class AppLauncher extends StatelessWidget {
   const AppLauncher({super.key});
 
   @override
   Widget build(BuildContext context) {
+    const apps = AppType.values; // use const to satisfy prefer_const_declarations
     return Scaffold(
       appBar: AppBar(
         title: const Text('Choose App'),
@@ -16,10 +69,10 @@ class AppLauncher extends StatelessWidget {
         padding: const EdgeInsets.all(16.0),
         child: GridView.count(
           crossAxisCount: 2,
-          childAspectRatio: 1.2,
+          childAspectRatio: 1.15,
           crossAxisSpacing: 16,
           mainAxisSpacing: 16,
-          children: AppType.values.map((appType) {
+          children: apps.map((appType) {
             final config = AppConfig.getConfig(appType);
             return _buildAppCard(context, appType, config);
           }).toList(),
@@ -31,18 +84,20 @@ class AppLauncher extends StatelessWidget {
   Widget _buildAppCard(BuildContext context, AppType appType, AppConfiguration config) {
     return Card(
       elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      clipBehavior: Clip.hardEdge,
       child: InkWell(
         onTap: () => _launchApp(context, appType),
-        borderRadius: BorderRadius.circular(8),
         child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
                 Color(config.primaryColor),
-                Color(config.primaryColor).withValues(alpha: 0.7),
+                // avoid deprecated withOpacity; use withAlpha (191 == 0.75*255)
+                Color(config.primaryColor).withAlpha(191),
               ],
             ),
           ),
@@ -64,9 +119,10 @@ class AppLauncher extends StatelessWidget {
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 6),
               Text(
-                appType.displayName,
+                // directly use display helper (remove unnecessary type-check)
+                _displayName(appType),
                 style: const TextStyle(
                   color: Colors.white70,
                   fontSize: 12,
@@ -92,10 +148,20 @@ class AppLauncher extends StatelessWidget {
     }
   }
 
+  String _displayName(AppType appType) {
+    try {
+      final dynamic dyn = appType;
+      final value = dyn.displayName;
+      if (value is String) return value;
+    } catch (_) {}
+    final parts = appType.toString().split('.');
+    return parts.isNotEmpty ? _capitalize(parts.last) : appType.toString();
+  }
+
+  String _capitalize(String s) => s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
+
   void _launchApp(BuildContext context, AppType appType) {
     AppConfig.switchApp(appType);
-    
-    // Navigate to the selected app
     Navigator.of(context).pushReplacementNamed('/app');
   }
 }

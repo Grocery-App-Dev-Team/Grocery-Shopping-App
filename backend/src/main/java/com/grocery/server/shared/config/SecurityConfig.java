@@ -2,7 +2,6 @@ package com.grocery.server.shared.config;
 
 import com.grocery.server.auth.security.CustomUserDetailsService;
 import com.grocery.server.auth.security.JwtAuthenticationFilter;
-import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -24,68 +23,44 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
 
-/**
- * Configuration: SecurityConfig
- * Muc dich: Cau hinh Spring Security
- */
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
-@RequiredArgsConstructor
 public class SecurityConfig {
 
     private final CustomUserDetailsService userDetailsService;
     private final JwtAuthenticationFilter jwtAuthFilter;
 
-    /**
-     * Cau hinh SecurityFilterChain
-     */
+    public SecurityConfig(CustomUserDetailsService userDetailsService,
+                          JwtAuthenticationFilter jwtAuthFilter) {
+        this.userDetailsService = userDetailsService;
+        this.jwtAuthFilter = jwtAuthFilter;
+    }
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            // Tat CSRF vi dung JWT (stateless)
             .csrf(AbstractHttpConfigurer::disable)
-            // Cho phep CORS tu frontend (Flutter web)
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-
-            // Cau hinh authorization
             .authorizeHttpRequests(auth -> auth
-                // ========== PUBLIC ENDPOINTS (Khong can authentication) ==========
+                .requestMatchers("/auth/**", "/public/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/stores", "/stores/open", "/stores/search").permitAll()
+                .requestMatchers(HttpMethod.GET, "/stores/*", "/categories/**", "/products/**").permitAll()
 
-                // Auth endpoints
-                .requestMatchers("/auth/**").permitAll()
-                .requestMatchers("/public/**").permitAll()
-
-                // Store public endpoints (GET only)
-                .requestMatchers(HttpMethod.GET, "/stores").permitAll()
-                .requestMatchers(HttpMethod.GET, "/stores/open").permitAll()
-                .requestMatchers(HttpMethod.GET, "/stores/search").permitAll()
-                .requestMatchers(HttpMethod.GET, "/stores/*").permitAll()
-
-                // Category & Product public endpoints (GET only)
-                .requestMatchers(HttpMethod.GET, "/categories/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/products/**").permitAll()
-
-                // ========== PROTECTED ENDPOINTS (Can authentication + role) ==========
-
-                // Store management endpoints (STORE role only)
                 .requestMatchers(HttpMethod.GET, "/stores/my-store").hasRole("STORE")
                 .requestMatchers(HttpMethod.PUT, "/stores/**").hasRole("STORE")
                 .requestMatchers(HttpMethod.PATCH, "/stores/**").hasRole("STORE")
                 .requestMatchers(HttpMethod.DELETE, "/stores/**").hasAnyRole("STORE", "ADMIN")
 
-                // Product management endpoints (STORE role only)
                 .requestMatchers(HttpMethod.POST, "/products").hasRole("STORE")
                 .requestMatchers(HttpMethod.PUT, "/products/**").hasRole("STORE")
                 .requestMatchers(HttpMethod.PATCH, "/products/**").hasRole("STORE")
                 .requestMatchers(HttpMethod.DELETE, "/products/**").hasRole("STORE")
 
-                // Category management endpoints (ADMIN only)
                 .requestMatchers(HttpMethod.POST, "/categories").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.PUT, "/categories/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/categories/**").hasRole("ADMIN")
 
-                // Order endpoints (role-based access)
                 .requestMatchers(HttpMethod.POST, "/orders").hasRole("CUSTOMER")
                 .requestMatchers(HttpMethod.GET, "/orders/my-orders").hasRole("CUSTOMER")
                 .requestMatchers(HttpMethod.GET, "/orders/my-store-orders").hasRole("STORE")
@@ -95,53 +70,29 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/orders/*").authenticated()
                 .requestMatchers(HttpMethod.PATCH, "/orders/*/status").authenticated()
 
-                // User endpoints (authenticated users)
                 .requestMatchers("/users/profile/**").authenticated()
                 .requestMatchers("/users/change-password").authenticated()
-
-                // Admin endpoints
                 .requestMatchers("/users/**").hasRole("ADMIN")
+
                 .requestMatchers("/admin/**").hasRole("ADMIN")
-
-                // Customer endpoints
                 .requestMatchers("/customer/**").hasRole("CUSTOMER")
-
-                // Shipper endpoints
                 .requestMatchers("/shipper/**").hasRole("SHIPPER")
 
-<<<<<<< Updated upstream
-                // Review endpoints
-                    .requestMatchers("/reviews").hasRole("CUSTOMER")
-                    .requestMatchers("/reviews/**").permitAll()
+                .requestMatchers("/reviews").hasRole("CUSTOMER")
+                .requestMatchers("/reviews/**").permitAll()
 
-                // Các request khác đều cần authentication
-=======
-                // Cac request khac deu can authentication
->>>>>>> Stashed changes
                 .anyRequest().authenticated()
             )
-
-            // Stateless session (khong dung session, chi dung JWT)
-            .sessionManagement(session ->
-                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-            )
-
-            // Them JWT filter
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
-    /**
-     * CORS configuration for local frontend
-     */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOriginPatterns(List.of(
-                "http://localhost:*",
-                "http://127.0.0.1:*"
-        ));
+        config.setAllowedOriginPatterns(List.of("http://localhost:*", "http://127.0.0.1:*"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
@@ -151,17 +102,11 @@ public class SecurityConfig {
         return source;
     }
 
-    /**
-     * Password encoder (BCrypt)
-     */
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
-    /**
-     * Authentication Provider
-     */
     @Bean
     public DaoAuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
@@ -170,9 +115,6 @@ public class SecurityConfig {
         return authProvider;
     }
 
-    /**
-     * Authentication Manager
-     */
     @Bean
     public AuthenticationManager authenticationManager(
             AuthenticationConfiguration authConfig) throws Exception {

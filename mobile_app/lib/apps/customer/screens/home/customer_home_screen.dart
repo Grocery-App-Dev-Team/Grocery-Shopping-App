@@ -219,12 +219,12 @@ class _HomeViewState extends State<_HomeView> {
                               color: Colors.white.withValues(alpha: 0.15),
                             ),
                           ),
-                          Padding(
-                            padding: const EdgeInsets.all(16),
+                          const Padding(
+                            padding: EdgeInsets.all(16),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               mainAxisAlignment: MainAxisAlignment.center,
-                              children: const [
+                              children: [
                                 Text(
                                   '\u0110i ch\u1ee3 nhanh',
                                   style: TextStyle(

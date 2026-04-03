@@ -12,13 +12,13 @@ class CustomerCartScreen extends StatelessWidget {
       valueListenable: CartSession.items,
       builder: (context, items, _) {
         if (items.isEmpty) {
-          return Center(
+          return const Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: const [
+              children: [
                 Icon(Icons.shopping_cart_outlined, size: 56, color: Colors.grey),
                 SizedBox(height: 12),
-                Text('Gi\u1ecf h\u00e0ng \u0111ang tr\u1ed1ng'),
+                Text('Giỏ hàng đang trống'),
               ],
             ),
           );

@@ -48,7 +48,7 @@ class CustomerAuthRepository {
     } catch (_) {
       throw AuthException('Đăng nhập thất bại');
     }
-    return false;
+    // return false;
   }
 
   Future<bool> register({
@@ -91,7 +91,7 @@ class CustomerAuthRepository {
     } catch (_) {
       throw AuthException('Đăng ký thất bại');
     }
-    return false;
+    // return false;
   }
 
   Future<void> _loadProfile() async {

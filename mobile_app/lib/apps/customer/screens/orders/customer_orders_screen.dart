@@ -55,13 +55,13 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
     }
 
     if (_orders.isEmpty) {
-      return Center(
+      return const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
+          children: [
             Icon(Icons.receipt_long, size: 56, color: Colors.grey),
             SizedBox(height: 12),
-            Text('Ch\u01b0a c\u00f3 \u0111\u01a1n h\u00e0ng'),
+            Text('Chưa có đơn hàng'),
           ],
         ),
       );
