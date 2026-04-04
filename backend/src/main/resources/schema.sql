@@ -108,6 +108,7 @@ CREATE TABLE orders (
     pod_image_url VARCHAR(255) DEFAULT NULL COMMENT 'Ảnh bằng chứng giao hàng',
     cancel_reason VARCHAR(255) DEFAULT NULL COMMENT 'Lý do hủy đơn',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    payment_status ENUM('PENDING', 'SUCCESS', 'FAILED') DEFAULT 'PENDING' COMMENT 'Trạng thái thanh toán',
     FOREIGN KEY (customer_id) REFERENCES users(id),
     FOREIGN KEY (store_id) REFERENCES stores(id),
     FOREIGN KEY (shipper_id) REFERENCES users(id),
@@ -141,7 +142,7 @@ COMMENT='Bảng chi tiết đơn hàng';
 CREATE TABLE payments (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     order_id BIGINT NOT NULL COMMENT 'Thuộc đơn hàng nào',
-    payment_method ENUM('COD', 'MOMO') NOT NULL COMMENT 'Phương thức thanh toán',
+    payment_method ENUM('COD', 'MOMO', 'VNPAY') NOT NULL COMMENT 'Phương thức thanh toán',
     amount DECIMAL(10, 2) NOT NULL COMMENT 'Số tiền giao dịch',
     transaction_code VARCHAR(100) DEFAULT NULL COMMENT 'Mã giao dịch Momo',
     status ENUM('PENDING', 'SUCCESS', 'FAILED', 'REFUNDED') DEFAULT 'PENDING' COMMENT 'Trạng thái giao dịch',
