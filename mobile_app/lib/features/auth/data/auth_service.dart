@@ -24,7 +24,7 @@ class AuthService {
       );
       final data = response.data;
       if (data == null) {
-        throw ApiException(message: 'Phản hồi trống');
+        throw const ApiException(message: 'Phản hồi trống');
       }
       final auth = AuthResponse.fromJson(data);
       await _client.setAccessToken(auth.token);
@@ -43,7 +43,7 @@ class AuthService {
       );
       final data = response.data;
       if (data == null) {
-        throw ApiException(message: 'Phản hồi trống');
+        throw const ApiException(message: 'Phản hồi trống');
       }
       final auth = AuthResponse.fromJson(data);
       if (auth.token.isNotEmpty) await _client.setAccessToken(auth.token);

@@ -65,7 +65,7 @@ class ProductService {
       );
       final data = response.data;
       if (data == null) {
-        throw ApiException(message: 'Phản hồi trống');
+        throw const ApiException(message: 'Phản hồi trống');
       }
       final product = data['data'] ?? data;
       return ProductModel.fromJson(
@@ -85,7 +85,7 @@ class ProductService {
       );
       final data = response.data;
       if (data == null) {
-        throw ApiException(message: 'Phản hồi trống');
+        throw const ApiException(message: 'Phản hồi trống');
       }
       final product = data['data'] ?? data;
       return ProductModel.fromJson(

@@ -220,12 +220,12 @@ class AppLauncher extends StatelessWidget {
       if (value is String) return value;
     } catch (_) {}
     final parts = appType.toString().split('.');
-    return parts.isNotEmpty ? _capitalize(parts.last) : appType.toString();
+    return parts.isNotEmpty ? capitalize(parts.last) : appType.toString();
   }
 
-  String _capitalize(String s) => s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
+  String capitalize(String s) => s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
 
-  void _launchApp(BuildContext context, AppType appType) {
+  void launchApp(BuildContext context, AppType appType) {
     AppConfig.switchApp(appType);
     Navigator.of(context).pushReplacementNamed('/app');
 >>>>>>> mobile_app

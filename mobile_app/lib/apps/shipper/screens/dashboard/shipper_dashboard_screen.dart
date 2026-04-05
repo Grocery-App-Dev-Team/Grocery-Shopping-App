@@ -448,9 +448,9 @@ class _ShipperDashboardScreenState extends State<ShipperDashboardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Center(
+          const Center(
             child: Column(
-              children: const [
+              children: [
                 CircleAvatar(
                   radius: 40,
                   backgroundColor: ShipperTheme.primaryColor,

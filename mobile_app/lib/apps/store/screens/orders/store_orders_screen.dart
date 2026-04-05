@@ -391,7 +391,7 @@ class _StoreOrdersScreenState extends State<StoreOrdersScreen> {
         ),
         child: SafeArea(
           child: Padding(
-            padding: EdgeInsets.fromLTRB(kPaddingLarge, kPaddingMedium, kPaddingLarge, kPaddingLarge + 8),
+            padding: const EdgeInsets.fromLTRB(kPaddingLarge, kPaddingMedium, kPaddingLarge, kPaddingLarge + 8),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -651,7 +651,7 @@ class _StoreOrdersScreenState extends State<StoreOrdersScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Padding(
-                      padding: EdgeInsets.fromLTRB(kPaddingLarge, kPaddingMedium, kPaddingLarge, 0),
+                      padding: const EdgeInsets.fromLTRB(kPaddingLarge, kPaddingMedium, kPaddingLarge, 0),
                       child: TextField(
                         controller: _orderSearchController,
                         decoration: InputDecoration(
@@ -669,7 +669,7 @@ class _StoreOrdersScreenState extends State<StoreOrdersScreen> {
                     ),
               const SizedBox(height: 12),
               Padding(
-                padding: EdgeInsets.fromLTRB(kPaddingLarge, 0, kPaddingLarge, 0),
+                padding: const EdgeInsets.fromLTRB(kPaddingLarge, 0, kPaddingLarge, 0),
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
@@ -709,7 +709,7 @@ class _StoreOrdersScreenState extends State<StoreOrdersScreen> {
               ),
               const SizedBox(height: 10),
               Padding(
-                padding: EdgeInsets.fromLTRB(kPaddingLarge, 0, kPaddingLarge, 0),
+                padding: const EdgeInsets.fromLTRB(kPaddingLarge, 0, kPaddingLarge, 0),
                 child: Row(
                   children: [
                     Text(
@@ -814,7 +814,7 @@ class _FilterChip extends StatelessWidget {
               color: selected ? _kPrimary : Colors.grey.shade300,
               width: 1,
             ),
-            boxShadow: selected ? null : [BoxShadow(color: _kCardShadow, blurRadius: 8, offset: const Offset(0, 2))],
+            boxShadow: selected ? null : [const BoxShadow(color: _kCardShadow, blurRadius: 8, offset: Offset(0, 2))],
           ),
           child: Text(
             label,
@@ -1373,7 +1373,7 @@ class _OrderDetailSheetState extends State<_OrderDetailSheet> {
           ),
           Flexible(
             child: SingleChildScrollView(
-              padding: EdgeInsets.fromLTRB(kPaddingLarge, 0, kPaddingLarge, kPaddingLarge),
+              padding: const EdgeInsets.fromLTRB(kPaddingLarge, 0, kPaddingLarge, kPaddingLarge),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

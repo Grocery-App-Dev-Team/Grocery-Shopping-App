@@ -123,8 +123,9 @@ class _ErrorInterceptor extends Interceptor {
     }
 
     if (statusCode != null) {
-      if (statusCode == 401) message = 'Phiên đăng nhập hết hạn';
-      else if (statusCode == 403) message = 'Không có quyền truy cập';
+      if (statusCode == 401) {
+        message = 'Phiên đăng nhập hết hạn';
+      } else if (statusCode == 403) message = 'Không có quyền truy cập';
       else if (statusCode >= 500) message = 'Lỗi máy chủ, vui lòng thử lại';
     }
 

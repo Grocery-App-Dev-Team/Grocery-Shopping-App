@@ -60,7 +60,7 @@ class _StoreDashboardScreenState extends State<StoreDashboardScreen> {
         builder: (context, state) {
           final isLoading = state is StoreDashboardLoading;
           return SingleChildScrollView(
-            padding: EdgeInsets.symmetric(horizontal: kPaddingLarge, vertical: kPaddingMedium).copyWith(bottom: isWide ? 48 : 32),
+            padding: const EdgeInsets.symmetric(horizontal: kPaddingLarge, vertical: kPaddingMedium).copyWith(bottom: isWide ? 48 : 32),
             child: Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: kMaxContentWidth),
@@ -170,14 +170,14 @@ class _SkeletonStatCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(kRadiusLarge),
         border: Border.all(color: Colors.grey.shade200.withValues(alpha: 0.6), width: 1),
       ),
-      child: Column(
+      child: const Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const _SkeletonBox(width: 44, height: 44, borderRadius: kRadiusMedium),
-          const SizedBox(height: 12),
-          const _SkeletonBox(width: 56, height: 28),
-          const SizedBox(height: 4),
-          const _SkeletonBox(width: 72, height: 13),
+          _SkeletonBox(width: 44, height: 44, borderRadius: kRadiusMedium),
+          SizedBox(height: 12),
+          _SkeletonBox(width: 56, height: 28),
+          SizedBox(height: 4),
+          _SkeletonBox(width: 72, height: 13),
         ],
       ),
     );
@@ -235,13 +235,13 @@ class _SkeletonRecentOrdersPreview extends StatelessWidget {
             children: [
               for (var i = 0; i < 3; i++) ...[
                 if (i > 0) const SizedBox(height: 12),
-                Row(
+                const Row(
                   children: [
-                    const _SkeletonBox(width: 80, height: 14),
-                    const SizedBox(width: 12),
-                    const _SkeletonBox(width: 70, height: 14),
-                    const Spacer(),
-                    const _SkeletonBox(width: 90, height: 24),
+                    _SkeletonBox(width: 80, height: 14),
+                    SizedBox(width: 12),
+                    _SkeletonBox(width: 70, height: 14),
+                    Spacer(),
+                    _SkeletonBox(width: 90, height: 24),
                   ],
                 ),
               ],
@@ -268,15 +268,15 @@ class _SkeletonRevenueSection extends StatelessWidget {
             color: _kSkeletonColor,
             borderRadius: BorderRadius.circular(kRadiusLarge),
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(kCardPadding),
+          child: const Padding(
+            padding: EdgeInsets.all(kCardPadding),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const _SkeletonBox(width: 120, height: 13),
-                const SizedBox(height: 8),
-                const _SkeletonBox(width: 160, height: 32),
+                _SkeletonBox(width: 120, height: 13),
+                SizedBox(height: 8),
+                _SkeletonBox(width: 160, height: 32),
               ],
             ),
           ),
@@ -290,12 +290,12 @@ class _SkeletonRevenueSection extends StatelessWidget {
             borderRadius: BorderRadius.circular(kRadiusLarge),
             border: Border.all(color: Colors.grey.shade200.withValues(alpha: 0.6), width: 1),
           ),
-          child: Column(
+          child: const Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const _SkeletonBox(width: 160, height: 16),
-              const SizedBox(height: kSectionSpacing),
-              const _SkeletonBox(width: double.infinity, height: 180),
+              _SkeletonBox(width: 160, height: 16),
+              SizedBox(height: kSectionSpacing),
+              _SkeletonBox(width: double.infinity, height: 180),
             ],
           ),
         ),
@@ -321,13 +321,13 @@ class _SkeletonTopSellingSection extends StatelessWidget {
             border: Border.all(color: Colors.grey.shade200.withValues(alpha: 0.6), width: 1),
           ),
           child: Column(
-            children: List.generate(5, (i) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 10),
+            children: List.generate(5, (i) => const Padding(
+              padding: EdgeInsets.symmetric(vertical: 10),
               child: Row(
                 children: [
-                  const _SkeletonBox(width: 28, height: 28, borderRadius: kRadiusSmall),
-                  const SizedBox(width: 14),
-                  const Expanded(child: _SkeletonBox(height: 14)),
+                  _SkeletonBox(width: 28, height: 28, borderRadius: kRadiusSmall),
+                  SizedBox(width: 14),
+                  Expanded(child: _SkeletonBox(height: 14)),
                   _SkeletonBox(width: 70, height: 13),
                 ],
               ),
@@ -356,13 +356,13 @@ class _SkeletonRecentActivitySection extends StatelessWidget {
             border: Border.all(color: Colors.grey.shade200.withValues(alpha: 0.6), width: 1),
           ),
           child: Column(
-            children: List.generate(5, (i) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 10),
+            children: List.generate(5, (i) => const Padding(
+              padding: EdgeInsets.symmetric(vertical: 10),
               child: Row(
                 children: [
-                  const _SkeletonBox(width: 40, height: 40, borderRadius: kRadiusSmall),
-                  const SizedBox(width: 14),
-                  const Expanded(child: _SkeletonBox(height: 14)),
+                  _SkeletonBox(width: 40, height: 40, borderRadius: kRadiusSmall),
+                  SizedBox(width: 14),
+                  Expanded(child: _SkeletonBox(height: 14)),
                   _SkeletonBox(width: 60, height: 12),
                 ],
               ),
@@ -382,7 +382,7 @@ class _HeaderSection extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
       child: Row(
         children: [
-          CircleAvatar(
+          const CircleAvatar(
             radius: 24,
             backgroundColor: Colors.white,
             child: Icon(Icons.store_rounded, color: _kPrimary, size: 28),
@@ -440,8 +440,8 @@ class _RevenueSection extends StatelessWidget {
               colors: [_kPrimary, Color(0xFF008C39)],
             ),
             borderRadius: BorderRadius.circular(kRadiusLarge),
-            boxShadow: [
-              BoxShadow(color: _kCardShadow, blurRadius: 8, offset: const Offset(0, 3)),
+            boxShadow: const [
+              BoxShadow(color: _kCardShadow, blurRadius: 8, offset: Offset(0, 3)),
             ],
           ),
           child: Column(
@@ -498,14 +498,14 @@ class _RevenueChartSectionState extends State<_RevenueChartSection> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(kRadiusLarge),
         border: Border.all(color: Colors.grey.shade200.withValues(alpha: 0.6), width: 1),
-        boxShadow: [BoxShadow(color: _kCardShadow, blurRadius: 8, offset: const Offset(0, 3))],
+        boxShadow: const [BoxShadow(color: _kCardShadow, blurRadius: 8, offset: Offset(0, 3))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          const Text(
             'Doanh thu tuần này',
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1A1A1A)),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1A1A1A)),
           ),
           const SizedBox(height: kSectionSpacing),
           SizedBox(
@@ -619,13 +619,13 @@ class _ExtraStatsRow extends StatelessWidget {
             ],
           );
         }
-        return Row(
+        return const Row(
           children: [
-            const Expanded(child: _StatCard(value: '50', label: 'Tổng sản phẩm', icon: Icons.inventory_2_rounded)),
-            const SizedBox(width: kCardPadding),
-            const Expanded(child: _StatCard(value: '45.000.000đ', label: 'Doanh thu tháng', icon: Icons.trending_up_rounded)),
-            const SizedBox(width: kCardPadding),
-            const Expanded(child: _StatCard(value: '3', label: 'Đơn bị hủy', icon: Icons.cancel_rounded)),
+            Expanded(child: _StatCard(value: '50', label: 'Tổng sản phẩm', icon: Icons.inventory_2_rounded)),
+            SizedBox(width: kCardPadding),
+            Expanded(child: _StatCard(value: '45.000.000đ', label: 'Doanh thu tháng', icon: Icons.trending_up_rounded)),
+            SizedBox(width: kCardPadding),
+            Expanded(child: _StatCard(value: '3', label: 'Đơn bị hủy', icon: Icons.cancel_rounded)),
           ],
         );
       },
@@ -655,14 +655,14 @@ class _StatisticsRow extends StatelessWidget {
             ],
           );
         }
-        return Row(
+        return const Row(
           children: [
             Expanded(child: _StatCard(value: '18', label: 'Đơn hôm nay', icon: Icons.shopping_bag_rounded)),
-            const SizedBox(width: kCardPadding),
+            SizedBox(width: kCardPadding),
             Expanded(child: _StatCard(value: '4', label: 'Đang chuẩn bị', icon: Icons.hourglass_top_rounded)),
-            const SizedBox(width: kCardPadding),
+            SizedBox(width: kCardPadding),
             Expanded(child: _StatCard(value: '2', label: 'Đang giao', icon: Icons.local_shipping_rounded)),
-            const SizedBox(width: kCardPadding),
+            SizedBox(width: kCardPadding),
             Expanded(child: _StatCard(value: '14', label: 'Hoàn thành', icon: Icons.check_circle_rounded)),
           ],
         );
@@ -788,7 +788,7 @@ class _TopSellingSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _SectionTitle(title: 'Sản phẩm bán chạy hôm nay'),
+        const _SectionTitle(title: 'Sản phẩm bán chạy hôm nay'),
         const SizedBox(height: kCardPadding),
         Container(
           width: double.infinity,
@@ -797,7 +797,7 @@ class _TopSellingSection extends StatelessWidget {
             color: Colors.white,
             borderRadius: BorderRadius.circular(kRadiusLarge),
             border: Border.all(color: Colors.grey.shade200.withValues(alpha: 0.6), width: 1),
-            boxShadow: [BoxShadow(color: _kCardShadow, blurRadius: 8, offset: const Offset(0, 3))],
+            boxShadow: const [BoxShadow(color: _kCardShadow, blurRadius: 8, offset: Offset(0, 3))],
           ),
           child: Column(
             children: [
@@ -863,7 +863,7 @@ class _RecentActivitySection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _SectionTitle(title: 'Hoạt động gần đây'),
+        const _SectionTitle(title: 'Hoạt động gần đây'),
         const SizedBox(height: kCardPadding),
         Container(
           width: double.infinity,
@@ -872,7 +872,7 @@ class _RecentActivitySection extends StatelessWidget {
             color: Colors.white,
             borderRadius: BorderRadius.circular(kRadiusLarge),
             border: Border.all(color: Colors.grey.shade200.withValues(alpha: 0.6), width: 1),
-            boxShadow: [BoxShadow(color: _kCardShadow, blurRadius: 8, offset: const Offset(0, 3))],
+            boxShadow: const [BoxShadow(color: _kCardShadow, blurRadius: 8, offset: Offset(0, 3))],
           ),
           child: Column(
             children: [
@@ -940,7 +940,7 @@ class _RecentOrdersPreview extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _SectionTitle(title: 'Đơn gần đây'),
+        const _SectionTitle(title: 'Đơn gần đây'),
         const SizedBox(height: kCardPadding),
         Container(
           width: double.infinity,
@@ -949,7 +949,7 @@ class _RecentOrdersPreview extends StatelessWidget {
             color: Colors.white,
             borderRadius: BorderRadius.circular(kRadiusLarge),
             border: Border.all(color: Colors.grey.shade200.withValues(alpha: 0.6), width: 1),
-            boxShadow: [BoxShadow(color: _kCardShadow, blurRadius: 8, offset: const Offset(0, 3))],
+            boxShadow: const [BoxShadow(color: _kCardShadow, blurRadius: 8, offset: Offset(0, 3))],
           ),
           child: Column(
             children: [

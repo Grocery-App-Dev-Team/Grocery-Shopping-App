@@ -198,7 +198,7 @@ class AuthRepositoryImpl implements AuthRepository {
       if (identifier == '0123456789' && password == '123456') {
         await Future.delayed(const Duration(seconds: 1)); // Giả lập độ trễ mạng
         
-        final mockResponse = AuthResponseModel(
+        const mockResponse = AuthResponseModel(
           success: true,
           message: 'Đăng nhập giả lập thành công!',
           data: AuthDataModel(

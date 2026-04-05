@@ -16,20 +16,20 @@ class RevenueCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
       ),
 
-      child: Column(
+      child: const Column(
 
         crossAxisAlignment: CrossAxisAlignment.start,
 
         children: [
 
-          const Text(
+          Text(
             "Doanh thu hôm nay",
             style: TextStyle(color: Colors.white),
           ),
 
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
 
-          const Text(
+          Text(
             "2.500.000₫",
             style: TextStyle(
               fontSize: 28,

@@ -104,8 +104,9 @@ String _formatPrice(double? v) {
 _StoreProduct _fromProductModel(ProductModel m) {
   final stock = m.stock ?? 0;
   ProductStatus status = ProductStatus.active;
-  if (m.isActive == false) status = ProductStatus.hidden;
-  else if (stock == 0) status = ProductStatus.outOfStock;
+  if (m.isActive == false) {
+    status = ProductStatus.hidden;
+  } else if (stock == 0) status = ProductStatus.outOfStock;
   return _StoreProduct(
     name: m.name ?? '',
     description: m.description ?? '',
@@ -172,7 +173,7 @@ class _StoreProductsScreenState extends State<StoreProductsScreen> {
   void _onSearchChanged() {
     final text = _searchController.text;
     _debounceTimer?.cancel();
-    _debounceTimer = Timer(Duration(milliseconds: _kSearchDebounceMs), () {
+    _debounceTimer = Timer(const Duration(milliseconds: _kSearchDebounceMs), () {
       if (mounted) setState(() => _debouncedQuery = text);
     });
   }
@@ -303,7 +304,7 @@ class _StoreProductsScreenState extends State<StoreProductsScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Padding(
-                  padding: EdgeInsets.fromLTRB(kPaddingLarge, kPaddingMedium, kPaddingLarge, kCardPadding),
+                  padding: const EdgeInsets.fromLTRB(kPaddingLarge, kPaddingMedium, kPaddingLarge, kCardPadding),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
@@ -370,7 +371,7 @@ class _StoreProductsScreenState extends State<StoreProductsScreen> {
                       final isLoading = state is StoreProductsLoading;
                       if (isLoading) {
                         return GridView.builder(
-                          padding: EdgeInsets.fromLTRB(kPaddingLarge, 0, kPaddingLarge, 100),
+                          padding: const EdgeInsets.fromLTRB(kPaddingLarge, 0, kPaddingLarge, 100),
                           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: 3,
                             mainAxisSpacing: kCardPadding,
@@ -387,7 +388,7 @@ class _StoreProductsScreenState extends State<StoreProductsScreen> {
                       final filteredModels = _applyProductFilter(state.products, _stockFilter, _debouncedQuery);
                       final filteredDisplay = filteredModels.map(_fromProductModel).toList();
                       return GridView.builder(
-                        padding: EdgeInsets.fromLTRB(kPaddingLarge, 0, kPaddingLarge, 100),
+                        padding: const EdgeInsets.fromLTRB(kPaddingLarge, 0, kPaddingLarge, 100),
                         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: 3,
                           mainAxisSpacing: kCardPadding,
@@ -433,11 +434,11 @@ class _StoreProductsScreenState extends State<StoreProductsScreen> {
         child: InkWell(
           onTap: () => _showAddProductModal(context),
           borderRadius: BorderRadius.circular(16),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             child: Row(
               mainAxisSize: MainAxisSize.min,
-              children: const [
+              children: [
                 Icon(Icons.add_rounded, size: 24, color: Colors.white),
                 SizedBox(width: 10),
                 Text(
@@ -478,9 +479,9 @@ class _ProductCardSkeleton extends StatelessWidget {
           Expanded(
             flex: 3,
             child: Container(
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 color: _kSkeletonColor,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(kRadiusLarge)),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(kRadiusLarge)),
               ),
             ),
           ),
@@ -729,12 +730,12 @@ class _ProductCardState extends State<_ProductCard> {
                             },
                             borderRadius: BorderRadius.circular(kRadiusSmall),
                             child: const Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Icon(Icons.remove_circle_outline_rounded, size: 14, color: Colors.white),
-                                  const SizedBox(width: 4),
+                                  SizedBox(width: 4),
                                   Text('Hết hàng', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white)),
                                 ],
                               ),
@@ -871,7 +872,7 @@ class _FilterChip extends StatelessWidget {
               color: selected ? _kPrimary : Colors.grey.shade300,
               width: 1,
             ),
-            boxShadow: selected ? null : [BoxShadow(color: _kCardShadow, blurRadius: 8, offset: const Offset(0, 2))],
+            boxShadow: selected ? null : [const BoxShadow(color: _kCardShadow, blurRadius: 8, offset: Offset(0, 2))],
           ),
           child: Text(
             label,
@@ -968,7 +969,7 @@ class _AddProductSheetState extends State<_AddProductSheet> {
         ),
         child: SafeArea(
           child: SingleChildScrollView(
-            padding: EdgeInsets.fromLTRB(kPaddingLarge, kPaddingMedium, kPaddingLarge, kPaddingLarge + 8),
+            padding: const EdgeInsets.fromLTRB(kPaddingLarge, kPaddingMedium, kPaddingLarge, kPaddingLarge + 8),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1010,7 +1011,7 @@ class _AddProductSheetState extends State<_AddProductSheet> {
                         const SizedBox(height: 8),
                         Text(
                           _imagePicked ? 'Đã chọn ảnh (demo)' : 'Tải ảnh lên',
-                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _kPrimary),
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _kPrimary),
                         ),
                       ],
                     ),
@@ -1234,7 +1235,7 @@ class _EditProductSheetState extends State<_EditProductSheet> {
         ),
         child: SafeArea(
           child: SingleChildScrollView(
-            padding: EdgeInsets.fromLTRB(kPaddingLarge, kPaddingMedium, kPaddingLarge, kPaddingLarge + 8),
+            padding: const EdgeInsets.fromLTRB(kPaddingLarge, kPaddingMedium, kPaddingLarge, kPaddingLarge + 8),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1420,7 +1421,7 @@ class _EditProductSheetState extends State<_EditProductSheet> {
                                       name: name,
                                       description: widget.descController.text.trim(),
                                       price: price,
-                                      stock: stock != null ? stock.clamp(0, 9999) : null,
+                                      stock: stock?.clamp(0, 9999),
                                       isActive: _selectedStatus != ProductStatus.hidden,
                                     ));
                                     if (mounted) Navigator.pop(context);

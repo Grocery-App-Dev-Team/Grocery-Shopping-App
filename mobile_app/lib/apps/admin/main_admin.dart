@@ -86,7 +86,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/config/app_config.dart';
 import '../../core/enums/user_role.dart';
 import '../../core/theme/admin_theme.dart';
-import '../../core/network/api_client.dart';
 import '../../core/utils/logger.dart';
 
 import '../../features/auth/bloc/auth_bloc.dart';

@@ -41,27 +41,27 @@ class StoreProfileScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _SectionTitle(title: 'Thông tin cửa hàng'),
+                const _SectionTitle(title: 'Thông tin cửa hàng'),
                 const SizedBox(height: 12),
-                _StoreHeaderCard(
+                const _StoreHeaderCard(
                   storeName: 'Siêu Thị Mini B',
                   address: '456 Lê Lợi, Q3',
                   status: 'Đang mở',
                 ),
                 const SizedBox(height: kSectionSpacing),
-                _SectionTitle(title: 'Thông tin liên hệ'),
+                const _SectionTitle(title: 'Thông tin liên hệ'),
                 const SizedBox(height: 12),
-                _InfoCard(
-                  items: const [
+                const _InfoCard(
+                  items: [
                     _InfoRow(icon: Icons.phone_rounded, label: 'Số điện thoại', value: '0901 234 567'),
                     _InfoRow(icon: Icons.email_rounded, label: 'Email', value: 'contact@minib.vn'),
                   ],
                 ),
                 const SizedBox(height: kSectionSpacing),
-                _SectionTitle(title: 'Giờ hoạt động'),
+                const _SectionTitle(title: 'Giờ hoạt động'),
                 const SizedBox(height: 12),
-                _InfoCard(
-                  items: const [
+                const _InfoCard(
+                  items: [
                     _InfoRow(icon: Icons.access_time_rounded, label: 'Mở cửa', value: '07:00 - 22:00'),
                   ],
                 ),
@@ -116,8 +116,8 @@ class _StoreHeaderCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(kRadiusLarge),
         border: Border.all(color: Colors.grey.shade200.withValues(alpha: 0.6), width: 1),
-        boxShadow: [
-          BoxShadow(color: _kCardShadow, blurRadius: 8, offset: const Offset(0, 3)),
+        boxShadow: const [
+          BoxShadow(color: _kCardShadow, blurRadius: 8, offset: Offset(0, 3)),
         ],
       ),
       child: Column(
@@ -219,8 +219,8 @@ class _InfoCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(kRadiusLarge),
         border: Border.all(color: Colors.grey.shade200.withValues(alpha: 0.6), width: 1),
-        boxShadow: [
-          BoxShadow(color: _kCardShadow, blurRadius: 8, offset: const Offset(0, 3)),
+        boxShadow: const [
+          BoxShadow(color: _kCardShadow, blurRadius: 8, offset: Offset(0, 3)),
         ],
       ),
       child: Column(

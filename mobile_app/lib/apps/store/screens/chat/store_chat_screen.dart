@@ -40,9 +40,9 @@ class StoreChatScreen extends StatelessWidget {
               kPaddingLarge,
               isWide ? 32 : 28,
             ),
-            children: [
+            children: const [
               _SectionLabel(title: 'Chat với shipper'),
-              const SizedBox(height: 10),
+              SizedBox(height: 10),
               _ChatTile(
                 name: 'Shipper A',
                 lastMessage: 'Đơn hàng đã lấy chưa?',
@@ -50,16 +50,16 @@ class StoreChatScreen extends StatelessWidget {
                 type: _ChatType.shipper,
                 hasUnread: true,
               ),
-              const SizedBox(height: kCardPadding),
+              SizedBox(height: kCardPadding),
               _ChatTile(
                 name: 'Shipper B',
                 lastMessage: 'Đơn #1235 đang trên đường.',
                 time: '09:45',
                 type: _ChatType.shipper,
               ),
-              const SizedBox(height: kSectionSpacing),
+              SizedBox(height: kSectionSpacing),
               _SectionLabel(title: 'Chat với khách hàng'),
-              const SizedBox(height: 10),
+              SizedBox(height: 10),
               _ChatTile(
                 name: 'Khách hàng B',
                 lastMessage: 'Shop chuẩn bị đơn giúp mình nhé',
@@ -67,7 +67,7 @@ class StoreChatScreen extends StatelessWidget {
                 type: _ChatType.customer,
                 hasUnread: true,
               ),
-              const SizedBox(height: kCardPadding),
+              SizedBox(height: kCardPadding),
               _ChatTile(
                 name: 'Khách hàng C',
                 lastMessage: 'Còn hàng không shop?',
@@ -140,8 +140,8 @@ class _ChatTileState extends State<_ChatTile> {
               color: _hover ? _kPrimary.withValues(alpha: 0.2) : Colors.grey.shade200.withValues(alpha: 0.6),
               width: 1,
             ),
-            boxShadow: [
-              BoxShadow(color: _kCardShadow, blurRadius: 8, offset: const Offset(0, 3)),
+            boxShadow: const [
+              BoxShadow(color: _kCardShadow, blurRadius: 8, offset: Offset(0, 3)),
             ],
           ),
           child: Material(
@@ -163,11 +163,11 @@ class _ChatTileState extends State<_ChatTile> {
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             border: Border.all(color: _kPrimary.withValues(alpha: 0.3), width: 1.5),
-                            boxShadow: [
+                            boxShadow: const [
                               BoxShadow(
                                 color: _kCardShadow,
                                 blurRadius: 6,
-                                offset: const Offset(0, 2),
+                                offset: Offset(0, 2),
                               ),
                             ],
                           ),

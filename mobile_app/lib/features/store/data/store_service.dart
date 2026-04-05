@@ -19,7 +19,7 @@ class StoreService {
       );
       final raw = response.data;
       if (raw == null) return null;
-      final data = raw is Map<String, dynamic> ? (raw['data'] ?? raw) : raw;
+      final data = (raw['data'] ?? raw);
       return StoreModel.fromJson(data is Map<String, dynamic> ? data : Map<String, dynamic>.from(data as Map));
     } on DioException catch (e) {
       debugPrint('getStoreInfo failed: $e');
@@ -39,7 +39,7 @@ class StoreService {
       );
       final raw = response.data;
       if (raw == null) return null;
-      final data = raw is Map<String, dynamic> ? (raw['data'] ?? raw) : raw;
+      final data = (raw['data'] ?? raw);
       return StoreModel.fromJson(data is Map<String, dynamic> ? data : Map<String, dynamic>.from(data as Map));
     } on DioException catch (e) {
       debugPrint('updateStoreProfile failed: $e');

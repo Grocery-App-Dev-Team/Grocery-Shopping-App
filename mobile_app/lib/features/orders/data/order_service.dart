@@ -63,7 +63,7 @@ class OrderService {
       );
       final data = response.data;
       if (data == null) {
-        throw ApiException(message: 'Phản hồi trống');
+        throw const ApiException(message: 'Phản hồi trống');
       }
       final order = data['data'] ?? data;
       return OrderModel.fromJson(
