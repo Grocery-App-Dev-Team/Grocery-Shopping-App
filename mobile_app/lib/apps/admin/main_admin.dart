@@ -86,15 +86,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/config/app_config.dart';
 import '../../core/enums/user_role.dart';
 import '../../core/theme/admin_theme.dart';
-import '../../core/network/api_client.dart';
+import '../../core/api/api_client.dart' as global_api;
 import '../../core/utils/logger.dart';
 
 import '../../features/auth/bloc/auth_bloc.dart';
-// ⚠️ Comment hoặc xóa dòng import bản thật
-// import '../../features/auth/repository/auth_repository_impl.dart';
-
-// ✅ Thêm import bản mock (nhớ điều chỉnh đường dẫn cho khớp với project của bạn)
-import '../../features/auth/repository/mock_auth_repository_impl.dart';
+import '../../features/auth/repository/auth_repository_impl.dart';
 
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/otp_screen.dart';
@@ -122,10 +118,9 @@ class AdminApp extends StatelessWidget {
       providers: [
         BlocProvider<AuthBloc>(
           create: (context) => AuthBloc(
-            // ✅ Đổi sang dùng MockAuthRepositoryImpl
-            authRepository: MockAuthRepositoryImpl(
+            authRepository: AuthRepositoryImpl(
+              apiClient: global_api.ApiClient(),
               prefs: prefs,
-              // Không cần truyền apiClient vào bản Mock nữa
             ),
           ),
         ),

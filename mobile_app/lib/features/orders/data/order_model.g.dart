@@ -30,14 +30,14 @@ Map<String, dynamic> _$OrderModelToJson(OrderModel instance) =>
       'address': instance.address,
       'created_at': instance.createdAt,
       'updated_at': instance.updatedAt,
-      'items': instance.items?.map((e) => e.toJson()).toList(),
+      'items': instance.items,
     };
 
 OrderItemModel _$OrderItemModelFromJson(Map<String, dynamic> json) =>
     OrderItemModel(
       productId: json['productId'] as String?,
       productName: json['productName'] as String?,
-      quantity: json['quantity'] as int?,
+      quantity: (json['quantity'] as num?)?.toInt(),
       price: (json['price'] as num?)?.toDouble(),
     );
 

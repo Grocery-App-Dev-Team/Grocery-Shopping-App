@@ -13,7 +13,7 @@ ProductModel _$ProductModelFromJson(Map<String, dynamic> json) => ProductModel(
       price: (json['price'] as num?)?.toDouble(),
       imageUrl: json['imageUrl'] as String?,
       category: json['category'] as String?,
-      stock: json['stock'] as int?,
+      stock: (json['stock'] as num?)?.toInt(),
       unit: json['unit'] as String?,
       storeId: json['storeId'] as String?,
       isActive: json['isActive'] as bool?,
@@ -45,7 +45,7 @@ CreateProductRequest _$CreateProductRequestFromJson(
       price: (json['price'] as num).toDouble(),
       imageUrl: json['imageUrl'] as String?,
       category: json['category'] as String?,
-      stock: json['stock'] as int?,
+      stock: (json['stock'] as num?)?.toInt(),
       unit: json['unit'] as String?,
       isActive: json['isActive'] as bool?,
     );
@@ -71,7 +71,7 @@ UpdateProductRequest _$UpdateProductRequestFromJson(
       price: (json['price'] as num?)?.toDouble(),
       imageUrl: json['imageUrl'] as String?,
       category: json['category'] as String?,
-      stock: json['stock'] as int?,
+      stock: (json['stock'] as num?)?.toInt(),
       unit: json['unit'] as String?,
       isActive: json['isActive'] as bool?,
     );
