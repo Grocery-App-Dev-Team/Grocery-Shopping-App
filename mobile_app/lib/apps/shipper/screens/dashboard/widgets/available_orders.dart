@@ -1,151 +1,230 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:grocery_shopping_app/core/theme/shipper_theme.dart';
 import 'package:grocery_shopping_app/apps/shipper/models/shipper_order.dart';
+import 'package:grocery_shopping_app/apps/shipper/services/routing_service.dart';
+import 'package:grocery_shopping_app/apps/shipper/bloc/shipper_dashboard_bloc.dart';
+import 'package:grocery_shopping_app/apps/shipper/screens/dashboard/widgets/optimized_order_card.dart';
+import '../../order_detail/order_detail_screen.dart';
+import '../../delivery/delivery_flow_screen.dart';
 
-class AvailableOrdersList extends StatelessWidget {
+class AvailableOrdersList extends StatefulWidget {
   final List<ShipperOrder> orders;
-  final void Function(int orderId)? onAccept;
-  final void Function(int orderId)? onSkip;
-  final void Function(int orderId)? onComplete;
+  final Map<int, double>? distances;
+  final Future<ShipperOrder?> Function(ShipperOrder order)? onAccept;
+  final Future<ShipperOrder?> Function(ShipperOrder order)? onComplete;
 
   const AvailableOrdersList({
     super.key,
     required this.orders,
+    this.distances,
     this.onAccept,
-    this.onSkip,
     this.onComplete,
   });
 
   @override
-  Widget build(BuildContext context) {
-    if (orders.isEmpty) {
-      return const Center(child: Text('Không có đơn hàng sẵn có'));
+  State<AvailableOrdersList> createState() => _AvailableOrdersListState();
+}
+
+class _AvailableOrdersListState extends State<AvailableOrdersList> {
+  bool _isLoading = false;
+  bool _hasCalculated = false;
+
+  static const String _apiKey = 'c251cd70-5c14-49fe-a134-0ad33f0bf0ed';
+  static final _routingService = GraphHopperRoutingService(apiKey: _apiKey);
+
+  Map<int, double> get _distances {
+    if (widget.distances != null && widget.distances!.isNotEmpty) {
+      return widget.distances!;
     }
+    if (context.mounted) {
+      final bloc = context.read<ShipperDashboardBloc>();
+      return bloc.state.distances;
+    }
+    return {};
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    if (_distances.isEmpty) {
+      _calculateAndSaveDistances();
+    }
+  }
+
+  @override
+  void didUpdateWidget(AvailableOrdersList oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    final currentDistances = _distances;
+    final hasAllDistances = widget.orders.every((order) =>
+        currentDistances[order.id] != null && currentDistances[order.id]! > 0);
+
+    if (!hasAllDistances) {
+      _hasCalculated = false;
+      _calculateAndSaveDistances();
+    }
+  }
+
+  Future<void> _calculateAndSaveDistances() async {
+    final currentDistances = _distances;
+    final hasAllDistances = widget.orders.every((order) =>
+        currentDistances[order.id] != null && currentDistances[order.id]! > 0);
+
+    if (hasAllDistances && _hasCalculated) return;
+    _hasCalculated = true;
+
+    setState(() => _isLoading = true);
+
+    try {
+      final hasPermission = await _checkLocationPermission();
+      if (!hasPermission) {
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      if (!mounted) return;
+
+      final currentLoc = LatLng(position.latitude, position.longitude);
+      final distances = await _calculateAllDistances(currentLoc);
+
+      if (!mounted) return;
+
+      context.read<ShipperDashboardBloc>().add(UpdateDistances(distances));
+      setState(() => _isLoading = false);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<Map<int, double>> _calculateAllDistances(LatLng shipperLoc) async {
+    final distances = <int, double>{};
+
+    for (final order in widget.orders) {
+      try {
+        final distance = await _routingService.getDistance(
+          origin: shipperLoc,
+          destination: _geocodeAddress(order.deliveryAddress),
+        );
+        distances[order.id] = distance;
+      } catch (e) {
+        distances[order.id] = 0;
+      }
+    }
+
+    return distances;
+  }
+
+  Future<bool> _checkLocationPermission() async {
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+
+    return permission == LocationPermission.whileInUse ||
+        permission == LocationPermission.always;
+  }
+
+  LatLng _geocodeAddress(String address) {
+    final hash = address.hashCode.abs();
+    return LatLng(
+      10.762622 + (hash % 100) * 0.001,
+      106.660172 + (hash % 50) * 0.001,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.orders.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.shopping_bag_outlined,
+              size: 72,
+              color: Colors.grey[300],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No Available Orders',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: ShipperTheme.textLightGreyColor,
+                  ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Check back soon for new delivery requests',
+              style: Theme.of(context).textTheme.bodyMedium,
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
+
     return ListView.separated(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      itemCount: orders.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      itemCount: widget.orders.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 4),
       itemBuilder: (context, index) {
-        final order = orders[index];
-        return Card(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          elevation: 2,
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: ShipperTheme.primaryColor.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(Icons.delivery_dining,
-                          color: ShipperTheme.primaryColor, size: 22),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Đơn #${order.id}',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            order.deliveryAddress,
-                            style: const TextStyle(color: Colors.black54),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Khách: ${order.customerName}',
-                            style: const TextStyle(color: Colors.black54),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          '${order.grandTotal.toStringAsFixed(0)}₫',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            color: ShipperTheme.primaryColor,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          order.status.label,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: order.status == OrderStatus.AVAILABLE
-                                ? ShipperTheme.primaryColor
-                                : Colors.grey[700],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                if (order.status == OrderStatus.AVAILABLE)
-                  Row(
-                    children: [
-                      if (onAccept != null)
-                        Expanded(
-                          flex: 2,
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFF57C00),
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                            ),
-                            onPressed: () => onAccept?.call(order.id),
-                            child: const Text('Nhận đơn'),
-                          ),
-                        ),
-                      const SizedBox(width: 10),
-                      if (onSkip != null)
-                        Expanded(
-                          flex: 1,
-                          child: OutlinedButton(
-                            style: OutlinedButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              foregroundColor: ShipperTheme.textColor,
-                              side: const BorderSide(color: Colors.grey),
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                            ),
-                            onPressed: () => onSkip?.call(order.id),
-                            child: const Text('Bỏ qua'),
-                          ),
-                        ),
-                    ],
+        final order = widget.orders[index];
+        final distance = _distances[order.id];
+
+        return OptimizedOrderCard(
+          order: order,
+          distance: distance,
+          isLoading: _isLoading,
+          onStart: () async {
+            if (order.status == OrderStatus.CONFIRMED) {
+              final updatedOrder = await widget.onAccept?.call(order);
+              if (context.mounted && updatedOrder != null) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => OrderDetailScreen(order: updatedOrder),
                   ),
-                if (order.status == OrderStatus.PICKING_UP ||
-                    order.status == OrderStatus.DELIVERING)
-                  ElevatedButton(
-                    onPressed: onComplete != null ? () => onComplete?.call(order.id) : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: ShipperTheme.primaryColor,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
-                    child: const Text('Hoàn thành'),
+                );
+              }
+            } else if (order.status == OrderStatus.PICKING_UP ||
+                order.status == OrderStatus.DELIVERING) {
+              final updatedOrder = await widget.onComplete?.call(order);
+              if (context.mounted && updatedOrder != null) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => DeliveryFlowScreen(order: updatedOrder),
                   ),
-              ],
-            ),
-          ),
+                );
+              }
+            }
+          },
+          onDetails: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => OrderDetailScreen(order: order),
+              ),
+            );
+          },
+          onMap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => DeliveryFlowScreen(order: order),
+              ),
+            );
+          },
         );
       },
     );

@@ -1,5 +1,6 @@
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
+import 'package:flutter/foundation.dart';
 import '../repository/shipper_repository.dart';
 
 part 'shipper_auth_event.dart';
@@ -20,12 +21,13 @@ class ShipperAuthBloc extends Bloc<ShipperAuthEvent, ShipperAuthState> {
       ShipperLoginRequested event, Emitter<ShipperAuthState> emit) async {
     emit(ShipperAuthLoading());
     try {
-      final success = await _repository.login(
-          phone: event.phone, password: event.password);
+      final success =
+          await _repository.login(phone: event.phone, password: event.password);
       if (success) {
         emit(ShipperAuthAuthenticated());
       } else {
-        emit(const ShipperAuthError(message: 'Thông tin đăng nhập không hợp lệ'));
+        emit(const ShipperAuthError(
+            message: 'Thông tin đăng nhập không hợp lệ'));
       }
     } catch (e) {
       emit(ShipperAuthError(message: e.toString()));
@@ -36,7 +38,12 @@ class ShipperAuthBloc extends Bloc<ShipperAuthEvent, ShipperAuthState> {
       ShipperRegisterRequested event, Emitter<ShipperAuthState> emit) async {
     emit(ShipperAuthLoading());
     try {
-      final success = await _repository.register(event.registrationInfo);
+      final success = await _repository.register(
+        phoneNumber: event.phoneNumber,
+        password: event.password,
+        fullName: event.fullName,
+        address: event.address,
+      );
       if (success) {
         emit(ShipperAuthAuthenticated());
       } else {
