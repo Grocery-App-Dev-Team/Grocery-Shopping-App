@@ -11,9 +11,9 @@ class CustomerApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => MaterialApp(
-    title: 'Đi Chợ Hộ - Khách Hàng',
-    theme: CustomerTheme.lightTheme,
-    home: const CustomerSplashScreen(),
-    debugShowCheckedModeBanner: false,
-  );
+        title: 'Đi Chợ Hộ - Khách Hàng',
+        theme: CustomerTheme.lightTheme,
+        home: const CustomerSplashScreen(),
+        debugShowCheckedModeBanner: false,
+      );
 }

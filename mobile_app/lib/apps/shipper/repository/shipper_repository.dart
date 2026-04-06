@@ -146,13 +146,13 @@ class ShipperRepository {
   }
 
   /// Lọc đơn hàng theo filter
-  /// 
+  ///
   /// Các thông số filter:
   /// - maxDistance: khoảng cách tối đa (km)
   /// - minEarning: thu nhập tối thiểu (VNĐ)
   /// - avoidPickup: chỉ lấy những đơn đã sẵn (không cần pickup)
   /// - maxItems: tối đa sản phẩm trong đơn
-  /// 
+  ///
   /// Trả về danh sách đơn hàng đã lọc
   List<ShipperOrder> filterOrders(
     List<ShipperOrder> orders,
@@ -171,8 +171,7 @@ class ShipperRepository {
       }
 
       // Lọc theo tránh pickup (nếu bật)
-      if (filter.avoidPickup == true &&
-          order.status == OrderStatus.PENDING) {
+      if (filter.avoidPickup == true && order.status == OrderStatus.PENDING) {
         // Nếu đơn còn PENDING (chưa confirm), nghĩa là chưa pickup
         return false;
       }

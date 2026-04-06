@@ -9,17 +9,17 @@ void main() {
 class AdminApp extends StatelessWidget {
   const AdminApp({super.key});
 
-  @override  
+  @override
   Widget build(BuildContext context) => MaterialApp(
-    title: 'Đi Chợ Hộ - Quản Trị Viên',
-    theme: AdminTheme.lightTheme,
-    home: const AdminSplashScreen(),
-    debugShowCheckedModeBanner: false,
-  );
+        title: 'Đi Chợ Hộ - Quản Trị Viên',
+        theme: AdminTheme.lightTheme,
+        home: const AdminSplashScreen(),
+        debugShowCheckedModeBanner: false,
+      );
 }
 
 // Email: admin@dichoho.com
 // Password: admin123
 
-// Email: superadmin@dichoho.com  
+// Email: superadmin@dichoho.com
 // Password: super123

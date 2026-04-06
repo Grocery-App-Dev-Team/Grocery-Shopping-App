@@ -1,25 +1,22 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:grocery_shopping_app/core/theme/shipper_theme.dart';
 import 'package:grocery_shopping_app/apps/shipper/models/shipper_order.dart';
+import 'package:grocery_shopping_app/apps/shipper/constants/shipper_strings.dart';
 import 'package:grocery_shopping_app/apps/shipper/services/routing_service.dart';
-import 'package:grocery_shopping_app/apps/shipper/bloc/shipper_dashboard_bloc.dart';
 import 'package:grocery_shopping_app/apps/shipper/screens/dashboard/widgets/optimized_order_card.dart';
 import '../../order_detail/order_detail_screen.dart';
 import '../../delivery/delivery_flow_screen.dart';
 
 class AvailableOrdersList extends StatefulWidget {
   final List<ShipperOrder> orders;
-  final Map<int, double>? distances;
   final Future<ShipperOrder?> Function(ShipperOrder order)? onAccept;
   final Future<ShipperOrder?> Function(ShipperOrder order)? onComplete;
 
   const AvailableOrdersList({
     super.key,
     required this.orders,
-    this.distances,
     this.onAccept,
     this.onComplete,
   });
@@ -29,59 +26,39 @@ class AvailableOrdersList extends StatefulWidget {
 }
 
 class _AvailableOrdersListState extends State<AvailableOrdersList> {
-  bool _isLoading = false;
-  bool _hasCalculated = false;
-
   static const String _apiKey = 'c251cd70-5c14-49fe-a134-0ad33f0bf0ed';
   static final _routingService = GraphHopperRoutingService(apiKey: _apiKey);
 
-  Map<int, double> get _distances {
-    if (widget.distances != null && widget.distances!.isNotEmpty) {
-      return widget.distances!;
-    }
-    if (context.mounted) {
-      final bloc = context.read<ShipperDashboardBloc>();
-      return bloc.state.distances;
-    }
-    return {};
-  }
+  final Map<int, double> _distanceCache = {};
+  bool _isLoadingDistances = false;
 
   @override
   void initState() {
     super.initState();
-    if (_distances.isEmpty) {
-      _calculateAndSaveDistances();
-    }
+    _calculateDistances();
   }
 
   @override
   void didUpdateWidget(AvailableOrdersList oldWidget) {
     super.didUpdateWidget(oldWidget);
-
-    final currentDistances = _distances;
-    final hasAllDistances = widget.orders.every((order) =>
-        currentDistances[order.id] != null && currentDistances[order.id]! > 0);
-
-    if (!hasAllDistances) {
-      _hasCalculated = false;
-      _calculateAndSaveDistances();
+    // Nếu orders thay đổi (từ refresh), tính lại khoảng cách cho orders mới
+    if (oldWidget.orders.length != widget.orders.length ||
+        oldWidget.orders.any((o) =>
+            !widget.orders.any((n) => n.id == o.id))) {
+      _distanceCache.clear();
+      _calculateDistances();
     }
   }
 
-  Future<void> _calculateAndSaveDistances() async {
-    final currentDistances = _distances;
-    final hasAllDistances = widget.orders.every((order) =>
-        currentDistances[order.id] != null && currentDistances[order.id]! > 0);
+  Future<void> _calculateDistances() async {
+    if (widget.orders.isEmpty) return;
 
-    if (hasAllDistances && _hasCalculated) return;
-    _hasCalculated = true;
-
-    setState(() => _isLoading = true);
+    setState(() => _isLoadingDistances = true);
 
     try {
       final hasPermission = await _checkLocationPermission();
       if (!hasPermission) {
-        setState(() => _isLoading = false);
+        setState(() => _isLoadingDistances = false);
         return;
       }
 
@@ -91,36 +68,56 @@ class _AvailableOrdersListState extends State<AvailableOrdersList> {
 
       if (!mounted) return;
 
-      final currentLoc = LatLng(position.latitude, position.longitude);
-      final distances = await _calculateAllDistances(currentLoc);
+      final shipperLoc = LatLng(position.latitude, position.longitude);
 
-      if (!mounted) return;
+      for (final order in widget.orders) {
+        if (_distanceCache.containsKey(order.id)) continue;
 
-      context.read<ShipperDashboardBloc>().add(UpdateDistances(distances));
-      setState(() => _isLoading = false);
+        try {
+          // Tạo waypoints: Shipper -> Stores -> Customer
+          final waypoints = <LatLng>[shipperLoc];
+          final labels = <String>['Vị trí hiện tại'];
+
+          // Thêm tất cả cửa hàng
+          if (order.stores.isNotEmpty) {
+            for (final store in order.stores) {
+              waypoints.add(_parseAddress(store.address));
+              labels.add(store.name);
+            }
+          } else {
+            waypoints.add(_parseAddress(order.storeAddress));
+            labels.add(order.storeName);
+          }
+
+          // Thêm địa chỉ giao hàng
+          waypoints.add(_parseAddress(order.deliveryAddress));
+          labels.add('Khách hàng');
+
+          // Tính multi-stop route
+          final routeInfo = await _routingService.getMultiStopRoute(
+            waypoints: waypoints,
+            labels: labels,
+          );
+
+          // Lấy khoảng cách đã convert thành km
+          final distanceKm = routeInfo.totalDistanceKm;
+
+          if (mounted) {
+            setState(() => _distanceCache[order.id] = distanceKm);
+          }
+        } catch (e) {
+          if (mounted) {
+            setState(() => _distanceCache[order.id] = 0);
+          }
+        }
+      }
     } catch (e) {
+      // Lỗi lấy location
+    } finally {
       if (mounted) {
-        setState(() => _isLoading = false);
+        setState(() => _isLoadingDistances = false);
       }
     }
-  }
-
-  Future<Map<int, double>> _calculateAllDistances(LatLng shipperLoc) async {
-    final distances = <int, double>{};
-
-    for (final order in widget.orders) {
-      try {
-        final distance = await _routingService.getDistance(
-          origin: shipperLoc,
-          destination: _geocodeAddress(order.deliveryAddress),
-        );
-        distances[order.id] = distance;
-      } catch (e) {
-        distances[order.id] = 0;
-      }
-    }
-
-    return distances;
   }
 
   Future<bool> _checkLocationPermission() async {
@@ -128,12 +125,12 @@ class _AvailableOrdersListState extends State<AvailableOrdersList> {
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
     }
-
     return permission == LocationPermission.whileInUse ||
         permission == LocationPermission.always;
   }
 
-  LatLng _geocodeAddress(String address) {
+  LatLng _parseAddress(String address) {
+    // Mock geocoding - sử dụng hash từ address
     final hash = address.hashCode.abs();
     return LatLng(
       10.762622 + (hash % 100) * 0.001,
@@ -155,14 +152,14 @@ class _AvailableOrdersListState extends State<AvailableOrdersList> {
             ),
             const SizedBox(height: 16),
             Text(
-              'No Available Orders',
+              ShipperStrings.emptyOrdersTitle,
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     color: ShipperTheme.textLightGreyColor,
                   ),
             ),
             const SizedBox(height: 8),
             Text(
-              'Check back soon for new delivery requests',
+              ShipperStrings.emptyOrdersSubtitle,
               style: Theme.of(context).textTheme.bodyMedium,
               textAlign: TextAlign.center,
             ),
@@ -179,12 +176,12 @@ class _AvailableOrdersListState extends State<AvailableOrdersList> {
       separatorBuilder: (_, __) => const SizedBox(height: 4),
       itemBuilder: (context, index) {
         final order = widget.orders[index];
-        final distance = _distances[order.id];
+        final distance = _distanceCache[order.id] ?? order.distanceKm;
 
         return OptimizedOrderCard(
           order: order,
           distance: distance,
-          isLoading: _isLoading,
+          isLoading: _isLoadingDistances,
           onStart: () async {
             if (order.status == OrderStatus.CONFIRMED) {
               final updatedOrder = await widget.onAccept?.call(order);

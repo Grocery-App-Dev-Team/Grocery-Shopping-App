@@ -11,9 +11,9 @@ class StoreApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => MaterialApp(
-    title: 'Đi Chợ Hộ - Chủ Cửa Hàng',
-    theme: StoreTheme.lightTheme,
-    home: const StoreSplashScreen(),
-    debugShowCheckedModeBanner: false,
-  );
+        title: 'Đi Chợ Hộ - Chủ Cửa Hàng',
+        theme: StoreTheme.lightTheme,
+        home: const StoreSplashScreen(),
+        debugShowCheckedModeBanner: false,
+      );
 }

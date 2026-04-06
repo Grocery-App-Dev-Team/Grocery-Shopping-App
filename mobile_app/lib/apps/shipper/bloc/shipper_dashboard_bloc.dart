@@ -36,7 +36,8 @@ class ShipperDashboardBloc
         status: DashboardStatus.loaded,
         isOnline: data['isOnline'] as bool,
         earnings: data['earnings'] as double,
-        availableOrders: List<ShipperOrder>.from(data['availableOrders'] as List),
+        availableOrders:
+            List<ShipperOrder>.from(data['availableOrders'] as List),
         deliveries: List<ShipperOrder>.from(data['deliveries'] as List),
         completedCount: data['completedCount'] as int,
         acceptanceRate: data['acceptanceRate'] as double,

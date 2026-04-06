@@ -11,7 +11,6 @@ import 'package:grocery_shopping_app/apps/shipper/screens/dashboard/widgets/avai
 import 'package:grocery_shopping_app/apps/shipper/screens/dashboard/widgets/dashboard_stats.dart';
 import 'package:grocery_shopping_app/apps/shipper/screens/dashboard/widgets/online_toggle.dart';
 import 'package:grocery_shopping_app/apps/shipper/screens/orders/filter_button_widget.dart';
-import 'package:grocery_shopping_app/apps/shipper/screens/orders/order_filter_modal.dart';
 import 'package:grocery_shopping_app/apps/shipper/screens/profile/shipper_profile_screen.dart';
 import 'package:grocery_shopping_app/apps/shipper/screens/delivery/delivery_flow_screen.dart';
 import 'package:grocery_shopping_app/apps/shipper/screens/order_detail/order_detail_screen.dart';
@@ -156,9 +155,7 @@ class _ShipperDashboardScreenState extends State<ShipperDashboardScreen> {
   Future<void> _refreshData() async {
     if (!mounted) return;
 
-    context.read<ShipperDashboardBloc>()
-      ..add(RefreshDashboardData())
-      ..add(const UpdateDistances({}));
+    context.read<ShipperDashboardBloc>().add(RefreshDashboardData());
 
     await Future.delayed(const Duration(milliseconds: 500));
   }
@@ -169,9 +166,11 @@ class _ShipperDashboardScreenState extends State<ShipperDashboardScreen> {
       providers: [
         BlocProvider(
           create: (_) {
-            final repo =
-                widget.preview ? _PreviewRepo() : context.read<ShipperRepository>();
-            return ShipperDashboardBloc(repository: repo)..add(LoadDashboardData());
+            final repo = widget.preview
+                ? _PreviewRepo()
+                : context.read<ShipperRepository>();
+            return ShipperDashboardBloc(repository: repo)
+              ..add(LoadDashboardData());
           },
         ),
         BlocProvider(
@@ -179,7 +178,15 @@ class _ShipperDashboardScreenState extends State<ShipperDashboardScreen> {
         ),
       ],
       child: Scaffold(
-        body: _buildBody(),
+        body: IndexedStack(
+          index: _currentIndex,
+          children: [
+            _overviewPage(),
+            _historyPage(),
+            _statisticsPage(),
+            _profilePage(),
+          ],
+        ),
         bottomNavigationBar: BottomNavigationBar(
           currentIndex: _currentIndex,
           selectedItemColor: ShipperTheme.primaryColor,
@@ -207,20 +214,6 @@ class _ShipperDashboardScreenState extends State<ShipperDashboardScreen> {
         floatingActionButton: _currentIndex == 0 ? _buildFilterFAB() : null,
       ),
     );
-  }
-
-  Widget _buildBody() {
-    switch (_currentIndex) {
-      case 1:
-        return _historyPage();
-      case 2:
-        return _statisticsPage();
-      case 3:
-        return _profilePage();
-      case 0:
-      default:
-        return _overviewPage();
-    }
   }
 
   Widget _overviewPage() {
@@ -271,10 +264,13 @@ class _ShipperDashboardScreenState extends State<ShipperDashboardScreen> {
                         children: [
                           Text(
                             _userData?['fullName'] ?? 'Shipper',
-                            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                  color: ShipperTheme.textColor,
-                                  fontWeight: FontWeight.w700,
-                                ) ??
+                            style: Theme.of(context)
+                                    .textTheme
+                                    .headlineSmall
+                                    ?.copyWith(
+                                      color: ShipperTheme.textColor,
+                                      fontWeight: FontWeight.w700,
+                                    ) ??
                                 const TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
@@ -283,10 +279,14 @@ class _ShipperDashboardScreenState extends State<ShipperDashboardScreen> {
                           const SizedBox(height: 4),
                           Text(
                             statusText,
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  color: Colors.black54,
-                                ) ??
-                                const TextStyle(fontSize: 14, color: Colors.black54),
+                            style: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.copyWith(
+                                      color: Colors.black54,
+                                    ) ??
+                                const TextStyle(
+                                    fontSize: 14, color: Colors.black54),
                           ),
                         ],
                       ),
@@ -308,9 +308,9 @@ class _ShipperDashboardScreenState extends State<ShipperDashboardScreen> {
                 const SizedBox(height: 16),
                 Text('Đơn hàng sẵn có',
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          color: ShipperTheme.textColor,
-                          fontWeight: FontWeight.w700,
-                        ) ??
+                              color: ShipperTheme.textColor,
+                              fontWeight: FontWeight.w700,
+                            ) ??
                         const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -364,7 +364,6 @@ class _ShipperDashboardScreenState extends State<ShipperDashboardScreen> {
 
                       return AvailableOrdersList(
                         orders: displayOrders,
-                        distances: state.distances,
                         onAccept: (order) async {
                           return context
                               .read<ShipperDashboardBloc>()
@@ -389,16 +388,13 @@ class _ShipperDashboardScreenState extends State<ShipperDashboardScreen> {
   Widget _buildFilterFAB() {
     return BlocBuilder<OrderFilterBloc, OrderFilterState>(
       builder: (context, state) {
-        final currentFilter = (state is OrderFilterLoaded)
-            ? state.filter
-            : const OrderFilter();
+        final currentFilter =
+            (state is OrderFilterLoaded) ? state.filter : const OrderFilter();
 
         return OrderFilterButton(
           currentFilter: currentFilter,
           onFilterApplied: (filter) {
-            context
-                .read<OrderFilterBloc>()
-                .add(UpdateOrderFilter(filter));
+            context.read<OrderFilterBloc>().add(UpdateOrderFilter(filter));
           },
         );
       },
@@ -423,9 +419,8 @@ class _ShipperDashboardScreenState extends State<ShipperDashboardScreen> {
           ),
           const SizedBox(height: 12),
           ElevatedButton.icon(
-            onPressed: () => context
-                .read<OrderFilterBloc>()
-                .add(const ResetOrderFilter()),
+            onPressed: () =>
+                context.read<OrderFilterBloc>().add(const ResetOrderFilter()),
             icon: const Icon(Icons.autorenew, size: 18),
             label: const Text('Xóa bộ lọc'),
           ),

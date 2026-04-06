@@ -61,9 +61,9 @@ class StatsCard extends StatelessWidget {
         Text(
           value,
           style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: ShipperTheme.primaryColor,
-              ) ??
+                    fontWeight: FontWeight.w700,
+                    color: ShipperTheme.primaryColor,
+                  ) ??
               const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
@@ -74,9 +74,9 @@ class StatsCard extends StatelessWidget {
         Text(
           label,
           style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: Colors.grey[600],
-                fontWeight: FontWeight.w500,
-              ) ??
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w500,
+                  ) ??
               TextStyle(
                 fontSize: 12,
                 color: Colors.grey[600],

@@ -41,3 +41,7 @@ class UpdateDistances extends ShipperDashboardEvent {
   @override
   List<Object?> get props => [distances];
 }
+
+class CalculateDistances extends ShipperDashboardEvent {
+  const CalculateDistances();
+}
