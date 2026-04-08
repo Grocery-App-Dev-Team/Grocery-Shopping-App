@@ -19,7 +19,7 @@ enum UserRole {
 enum UserStatus {
   @JsonValue('ACTIVE')
   active,
-  @JsonValue('INACTIVE')
+  @JsonValue('BANNED')
   inactive,
   @JsonValue('SUSPENDED')
   suspended,
@@ -95,7 +95,7 @@ class UserModel extends Equatable {
     if (status is UserStatus) return status;
     final statusStr = status.toString().toUpperCase();
     if (statusStr == 'ACTIVE') return UserStatus.active;
-    if (statusStr == 'INACTIVE') return UserStatus.inactive;
+    if (statusStr == 'BANNED' || statusStr == 'INACTIVE') return UserStatus.inactive;
     if (statusStr == 'SUSPENDED') return UserStatus.suspended;
     return UserStatus.active;
   }

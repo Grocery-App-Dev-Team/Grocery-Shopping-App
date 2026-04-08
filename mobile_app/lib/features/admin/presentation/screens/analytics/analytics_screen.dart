@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../admin/domain/repositories/user_repository.dart';
 import '../../../../admin/data/repositories/api_user_repository_impl.dart';
 import '../../../../admin/domain/repositories/store_repository.dart';
 import '../../../../admin/data/repositories/api_store_repository_impl.dart';
-import '../../../../auth/models/user_model.dart';
+import 'package:grocery_shopping_app/features/auth/models/user_model.dart';
+import 'package:grocery_shopping_app/features/orders/data/order_model.dart';
+import 'package:grocery_shopping_app/features/orders/data/order_service.dart';
+import 'package:grocery_shopping_app/core/utils/export_service.dart';
 
 class AnalyticsScreen extends StatefulWidget {
   const AnalyticsScreen({super.key});
@@ -34,56 +36,112 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   }
 
   void _loadStats() {
-    _statsFuture = Future.wait([
+    final orderService = OrderService();
+    _statsFuture = Future.wait<dynamic>([
       _userRepository.getUsers(),
       _storeRepository.getStores(),
-      SharedPreferences.getInstance(),
+      orderService.getAllOrdersAdmin(),
     ]).then((results) {
       final users = results[0] as List<UserModel>;
       final stores = results[1] as List<Map<String, dynamic>>;
-      final prefs = results[2] as SharedPreferences;
+      final orders = results[2] as List<OrderModel>;
       
       final uCount = users.length;
       final sCount = stores.length;
-      final customerCount = users.where((u) => u.role == UserRole.customer).length;
-      final factor = prefs.getDouble('growth_factor') ?? 1.0;
+      final shippersList = users.where((u) => u.role == UserRole.shipper).toList();
 
-      // Filter for shippers
-      final shippers = users.where((u) => u.role == UserRole.shipper).toList();
-
-      // Logic: Multiplier based on time filter
-      double timeMult = 1.0;
-      switch (_selectedTimeFilter) {
-        case 'Hôm nay': timeMult = 0.1; break;
-        case 'Tháng này': timeMult = 4.0; break;
-        case 'Năm nay': timeMult = 48.0; break;
-        default: timeMult = 1.0; // Tuần này
-      }
-
-      // Calculate "Real-feeling" numbers
-      // logic: If no stores or very few customers = 0 orders/revenue (for realism in fresh systems)
-      if (sCount == 0 || (customerCount == 0 && sCount < 2)) {
-        _dynamicRevenue = 0;
-        _dynamicOrders = 0;
-      } else {
-        // Much more conservative base: 0.1 order per customer, 0.5 per store
-        // This ensures 0 orders for 1 customer/1 store systems
-        final baseOrders = (customerCount * 0.1 + sCount * 0.5) * timeMult * factor;
-        _dynamicOrders = baseOrders.toInt();
+      // 1. Lọc đơn hàng theo thời gian đã chọn
+      final now = DateTime.now();
+      final filteredOrders = orders.where((ord) {
+        if (ord.createdAt == null) return false;
+        final date = DateTime.tryParse(ord.createdAt!) ?? now;
         
-        // Revenue scales with orders: average 150k per order
-        _dynamicRevenue = _dynamicOrders * 150000.0 * (0.9 + (DateTime.now().second % 20) / 100); 
+        if (_selectedTimeFilter == 'Hôm nay') {
+          return date.year == now.year && date.month == now.month && date.day == now.day;
+        } else if (_selectedTimeFilter == 'Tuần này') {
+          final weekStart = now.subtract(Duration(days: now.weekday - 1));
+          return date.isAfter(weekStart.subtract(const Duration(seconds: 1)));
+        } else if (_selectedTimeFilter == 'Tháng này') {
+          return date.year == now.year && date.month == now.month;
+        } else if (_selectedTimeFilter == 'Năm nay') {
+          return date.year == now.year;
+        }
+        return true;
+      }).toList();
+
+      // 2. Tổng hợp dữ liệu thực tế (Doanh thu & Tổng đơn)
+      double realRevenue = 0;
+      int realOrdersCount = filteredOrders.length;
+      
+      Map<String, double> storeRevenueMap = {};
+      Map<String, int> shipperOrdersMap = {};
+      Map<int, double> chartDataMap = {}; // index -> revenue
+
+      for (var order in filteredOrders) {
+        final status = (order.status ?? '').toUpperCase();
+        if (status != 'CANCELLED') {
+          realRevenue += (order.totalAmount ?? 0).toDouble();
+          
+          // Thống kê theo cửa hàng
+          final sId = (order.storeId ?? order.storeName ?? 'Khác').toString();
+          storeRevenueMap[sId] = (storeRevenueMap[sId] ?? 0) + (order.totalAmount ?? 0).toDouble();
+          
+          // Thống kê theo shipper
+          final shId = (order.shipperId ?? order.shipperName ?? 'Chưa gán').toString();
+          shipperOrdersMap[shId] = (shipperOrdersMap[shId] ?? 0) + 1;
+        }
+
+        // Dữ liệu biểu đồ (Phân phối theo giờ/ngày/tháng)
+        final date = DateTime.tryParse(order.createdAt!) ?? now;
+        int chartIdx = 0;
+        if (_selectedTimeFilter == 'Hôm nay') {
+          chartIdx = (date.hour / 4).floor().clamp(0, 5); // 6 mốc
+        } else if (_selectedTimeFilter == 'Tuần này') {
+          chartIdx = (date.weekday - 1).clamp(0, 6); // 7 ngày
+        } else if (_selectedTimeFilter == 'Tháng này') {
+          chartIdx = ((date.day - 1) / 7).floor().clamp(0, 3); // 4 tuần
+        } else if (_selectedTimeFilter == 'Năm nay') {
+          chartIdx = (date.month - 1).clamp(0, 11); // 12 tháng
+        }
+        final amount = (order.totalAmount ?? 0).toDouble();
+        chartDataMap[chartIdx] = (chartDataMap[chartIdx] ?? 0) + amount;
       }
+
+      _dynamicRevenue = realRevenue;
+      _dynamicOrders = realOrdersCount;
+
+      // 3. Chuẩn bị danh sách Xếp hạng
+      final List<Map<String, dynamic>> topStoreResults = [];
+      storeRevenueMap.forEach((key, val) {
+        topStoreResults.add({
+          'name': key,
+          'revenue': val,
+        });
+      });
+      topStoreResults.sort((a, b) => (b['revenue'] as double).compareTo(a['revenue'] as double));
+
+      final List<Map<String, dynamic>> topShipperResults = [];
+      shipperOrdersMap.forEach((key, val) {
+        topShipperResults.add({
+          'id': key,
+          'count': val,
+        });
+      });
+      topShipperResults.sort((a, b) => (b['count'] as int).compareTo(a['count'] as int));
 
       return {
         'userCount': uCount,
         'storeCount': sCount,
-        'revenue': _dynamicRevenue,
-        'orders': _dynamicOrders,
-        'topStores': stores.take(3).toList(),
-        'topShippers': shippers.take(3).toList(),
+        'revenue': realRevenue,
+        'orders': realOrdersCount,
+        'allOrders': filteredOrders,
+        'chartData': chartDataMap,
+        'topStoresData': topStoreResults.take(5).toList(),
+        'topShippersData': topShipperResults.take(5).toList(),
+        'shippersList': shippersList,
       };
     }).catchError((e) {
+      debugPrint('Analytics Load Error: $e');
       return <String, dynamic>{'userCount': 0, 'storeCount': 0, 'offline': true};
     });
   }
@@ -91,12 +149,17 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
         title: const Text('Báo Cáo Bán Hàng'),
         backgroundColor: const Color(0xFF6A1B9A),
         foregroundColor: Colors.white,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.file_download_outlined),
+            onPressed: () => _exportAnalytics(context),
+            tooltip: 'Xuất Báo cáo',
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () => setState(() => _loadStats()),
@@ -113,8 +176,10 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
           final int storeCount = snapshot.data?['storeCount'] ?? 0;
           final double revenue = snapshot.data?['revenue'] ?? 0;
           final int orders = snapshot.data?['orders'] ?? 0;
-          final List topStores = snapshot.data?['topStores'] ?? [];
-          final List topShippers = snapshot.data?['topShippers'] ?? [];
+          final List topStoresData = snapshot.data?['topStoresData'] ?? [];
+          final List topShippersData = snapshot.data?['topShippersData'] ?? [];
+          final List<UserModel> shippersList = snapshot.data?['shippersList'] ?? [];
+          final Map<int, double> chartData = snapshot.data?['chartData'] ?? {};
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16.0),
@@ -180,26 +245,26 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                // Hàng 2: Dynamic Scale (chú thích rõ)
+                // Hàng 2: Real data from scanner
                 Row(
                   children: [
                     Expanded(
                       child: _buildStatCard(
-                        'Doanh thu (tính toán)',
+                        'Doanh thu',
                         isLoading ? '...' : _currencyFormat.format(revenue),
                         Icons.attach_money,
                         Colors.orange,
-                        isReal: false,
+                        isReal: !isOffline,
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: _buildStatCard(
-                        'Đơn hàng (tính toán)',
+                        'Đơn hàng',
                         isLoading ? '...' : '$orders đơn',
                         Icons.shopping_bag,
                         Colors.purple,
-                        isReal: false,
+                        isReal: !isOffline,
                       ),
                     ),
                   ],
@@ -226,7 +291,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                               TextSpan(text: '🟢 Xanh/Xanh lơ: ', style: TextStyle(fontWeight: FontWeight.bold)),
                               TextSpan(text: 'Dữ liệu thực từ API.  '),
                               TextSpan(text: '🟡 Cam/Tím: ', style: TextStyle(fontWeight: FontWeight.bold)),
-                              TextSpan(text: 'Ước tính (chưa có API Đơn hàng cho Admin).'),
+                              TextSpan(text: 'Dữ liệu thực từ hệ thống quét.'),
                             ],
                           ),
                         ),
@@ -236,17 +301,17 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                 ),
 
                 const SizedBox(height: 32),
-                const Text('Biểu đồ Doanh thu (ước tính)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const Text('Biểu đồ Doanh thu (Quét thực tế)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 16),
-                _buildLineChart(),
+                _buildLineChart(chartData),
 
                 const SizedBox(height: 32),
                 const Text('Bảng Xếp Hạng', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 16),
-                _buildLeaderboards(topStores, topShippers, revenue, orders),
+                _buildLeaderboards(topStoresData, topShippersData, shippersList),
 
                 const SizedBox(height: 32),
-                const Text('Cơ cấu Nguồn tiền (ước tính)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const Text('Cơ cấu Thanh toán (Ước tính)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 16),
                 _buildPieChart(),
                 const SizedBox(height: 32),
@@ -341,17 +406,16 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     );
   }
 
-  Widget _buildLineChart() {
+  Widget _buildLineChart(Map<int, double> chartData) {
     int pointCount = 7;
     List<String> xLabels = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
     if (_selectedTimeFilter == 'Hôm nay') {
-      pointCount = 6; xLabels = ['8h', '10h', '12h', '15h', '18h', '21h'];
+      pointCount = 6; xLabels = ['Sau 0h', '4h', '8h', '12h', '16h', '20h'];
     } else if (_selectedTimeFilter == 'Tháng này') {
       pointCount = 4; xLabels = ['Tuần 1', 'Tuần 2', 'Tuần 3', 'Tuần 4'];
     } else if (_selectedTimeFilter == 'Năm nay') {
       pointCount = 12; xLabels = ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10', 'T11', 'T12'];
     }
-    final double multiplier = (_dynamicRevenue / pointCount) / 1000000;
 
     return Card(
       elevation: 2,
@@ -379,18 +443,28 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                 },
               )),
               leftTitles: AxisTitles(sideTitles: SideTitles(
-                showTitles: true, reservedSize: 45,
-                getTitlesWidget: (value, meta) => Padding(
-                  padding: const EdgeInsets.only(right: 8.0),
-                  child: Text('${value.toInt()}Tr', style: const TextStyle(fontSize: 10)),
-                ),
+                showTitles: true, reservedSize: 55,
+                getTitlesWidget: (value, meta) {
+                   String text = '';
+                   if (value >= 1000000) {
+                     text = '${(value / 1000000).toStringAsFixed(1)}Tr';
+                   } else if (value >= 1000) {
+                     text = '${(value / 1000).toStringAsFixed(0)}K';
+                   } else {
+                     text = value.toStringAsFixed(0);
+                   }
+                   return Padding(
+                    padding: const EdgeInsets.only(right: 8.0),
+                    child: Text(text, style: const TextStyle(fontSize: 10)),
+                  );
+                },
               )),
             ),
             borderData: FlBorderData(show: false),
             lineBarsData: [
               LineChartBarData(
                 spots: List.generate(pointCount, (index) {
-                  double val = multiplier * (0.5 + (index % 3) * 0.5);
+                  double val = chartData[index] ?? 0;
                   return FlSpot(index.toDouble(), val);
                 }),
                 isCurved: true, color: Colors.deepPurple, barWidth: 4,
@@ -404,28 +478,34 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     );
   }
 
-  Widget _buildLeaderboards(
-      List topStores, List topShippers, double revenue, int orders) {
-    // Generate some fake but believable metrics for the real stores/shippers
-    final storeItems = topStores.asMap().entries.map((entry) {
-      final i = entry.key;
-      final s = entry.value;
-      final val = (revenue * (0.4 - i * 0.1)).clamp(0, revenue);
+  Widget _buildLeaderboards(List topStoresData, List topShippersData, List<UserModel> shippersList) {
+    // Chuẩn bị dữ liệu hiển thị cho Cửa hàng
+    final storeItems = topStoresData.map((s) {
       return {
-        'name': s['storeName'] ?? 'Cửa hàng #${s['id']}',
-        'metric': _currencyFormat.format(val),
-        'subtitle': 'Địa chỉ: ${s['storeAddress'] ?? 'N/A'}',
+        'name': s['name'],
+        'metric': _currencyFormat.format(s['revenue']),
+        'subtitle': 'Doanh thu đóng góp',
       };
     }).toList();
 
-    final shipperItems = topShippers.asMap().entries.map((entry) {
-      final i = entry.key;
-      final s = entry.value;
-      final val = (orders * (0.3 - i * 0.05)).toInt().clamp(0, orders);
+    // Chuẩn bị dữ liệu hiển thị cho Shipper (mapping tên từ ID nếu cần)
+    final shipperItems = topShippersData.map((s) {
+      final shipperObj = shippersList.firstWhere(
+        (u) => u.id == s['id'].toString(), 
+        orElse: () => UserModel(
+          id: s['id'].toString(), 
+          fullName: s['id'].toString(), 
+          phoneNumber: 'N/A', 
+          role: UserRole.shipper, 
+          status: UserStatus.active, 
+          createdAt: DateTime.now(), 
+          updatedAt: DateTime.now()
+        )
+      );
       return {
-        'name': s.fullName ?? 'Shipper #${s.id}',
-        'metric': '$val Đơn',
-        'subtitle': 'SĐT: ${s.phoneNumber}',
+        'name': shipperObj.fullName,
+        'metric': '${s['count']} Đơn',
+        'subtitle': 'SĐT: ${shipperObj.phoneNumber}',
       };
     }).toList();
 
@@ -518,6 +598,26 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         ),
       ),
     );
+  }
+
+  void _exportAnalytics(BuildContext context) async {
+    final snapshot = await _statsFuture;
+    final List<Map<String, dynamic>> exportData = [
+      {'Hạng mục': 'Khoảng thời gian', 'Giá trị': _selectedTimeFilter},
+      {'Hạng mục': 'Tổng người dùng', 'Giá trị': snapshot['userCount']},
+      {'Hạng mục': 'Tổng cửa hàng', 'Giá trị': snapshot['storeCount']},
+      {'Hạng mục': 'Doanh thu thực', 'Giá trị': _currencyFormat.format(snapshot['revenue'])},
+      {'Hạng mục': 'Số lượng đơn hàng', 'Giá trị': snapshot['orders']},
+      {'Hạng mục': 'Nguồn dữ liệu', 'Giá trị': 'Hệ thống Quét thực tế'},
+    ];
+
+    if (mounted) {
+      await ExportService.exportToCsv(
+        context: context,
+        data: exportData,
+        fileName: 'baocao_phantich_thuc_${DateFormat('yyyyMMdd').format(DateTime.now())}',
+      );
+    }
   }
 
   Widget _buildIndicator(Color color, String text) {

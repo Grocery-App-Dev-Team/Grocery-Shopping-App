@@ -397,6 +397,76 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<UserModel> updateProfile({
+    required Map<String, dynamic> userData,
+  }) async {
+    try {
+      AppLogger.info('👤 Profile update attempt for: ${userData['fullName']}');
+      
+      final response = await _apiClient.put(
+        ApiEndpoints.updateProfile,
+        data: userData,
+      );
+
+      if (response.data['success'] == true && response.data['data'] != null) {
+        final updatedUser = UserModel.fromJson(response.data['data']);
+        
+        // Cập nhật local storage
+        await _prefs.setString(_keyUser, jsonEncode(updatedUser.toJson()));
+        
+        AppLogger.info('✅ Profile updated and saved locally: ${updatedUser.fullName}');
+        return updatedUser;
+      } else {
+        throw ServerException(
+          message: response.data['message'] ?? 'Cập nhật profile thất bại',
+          statusCode: response.statusCode ?? 400,
+        );
+      }
+    } on DioException catch (e) {
+      AppLogger.error('🔥 Profile update DioException: ${e.message}', e);
+      throw ServerException(
+        message: e.response?.data?['message'] ?? 'Lỗi server khi cập nhật profile',
+        statusCode: e.response?.statusCode ?? 500,
+      );
+    }
+  }
+
+  @override
+  Future<void> changePassword({
+    required String oldPassword,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    try {
+      AppLogger.info('🔐 Change password attempt');
+      
+      final response = await _apiClient.post(
+        ApiEndpoints.changePassword,
+        data: {
+          'oldPassword': oldPassword,
+          'newPassword': newPassword,
+          'confirmPassword': confirmPassword,
+        },
+      );
+
+      if (response.data['success'] == true) {
+        AppLogger.info('✅ Password changed successfully');
+      } else {
+        throw ServerException(
+          message: response.data['message'] ?? 'Đổi mật khẩu thất bại',
+          statusCode: response.statusCode ?? 400,
+        );
+      }
+    } on DioException catch (e) {
+      AppLogger.error('🔥 Change password DioException: ${e.message}', e);
+      throw ServerException(
+        message: e.response?.data?['message'] ?? 'Lỗi server khi đổi mật khẩu',
+        statusCode: e.response?.statusCode ?? 500,
+      );
+    }
+  }
+
+  @override
   Future<AuthResponseModel> resetPassword({
     required String newPassword,
     required String confirmPassword,

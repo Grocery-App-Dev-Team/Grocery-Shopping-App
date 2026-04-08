@@ -3,6 +3,9 @@ import '../../../../../core/enums/app_type.dart';
 import '../../../../auth/models/user_model.dart';
 import '../../../domain/repositories/user_repository.dart';
 import '../../../data/repositories/api_user_repository_impl.dart';
+import 'package:grocery_shopping_app/features/orders/data/order_model.dart';
+import 'package:grocery_shopping_app/features/orders/data/order_service.dart';
+import 'package:intl/intl.dart';
 
 class UserDetailScreen extends StatefulWidget {
   final UserModel user;
@@ -15,19 +18,38 @@ class UserDetailScreen extends StatefulWidget {
 
 class _UserDetailScreenState extends State<UserDetailScreen> {
   final UserRepository _userRepository = ApiUserRepositoryImpl();
+  final OrderService _orderService = OrderService();
+  final _currencyFormat = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ');
+
   late UserModel _user;
   bool _isLoading = false;
+  List<OrderModel> _userOrders = [];
 
-  final List<Map<String, dynamic>> _cartItems = [
-    {'id': 'c1', 'name': 'Táo NZ nhập khẩu (1kg)', 'price': 120000, 'store': 'Winmart', 'qty': 2, 'isHidden': false},
-    {'id': 'c2', 'name': 'Sữa chua Vinamilk lốc 4', 'price': 32000, 'store': 'Bách Hóa Xanh', 'qty': 1, 'isHidden': false},
-    {'id': 'c3', 'name': 'Bánh mì sandwich mềm', 'price': 25000, 'store': 'Gia Đình Mart', 'qty': 3, 'isHidden': false},
-  ];
+  final List<Map<String, dynamic>> _cartItems = [];
 
   @override
   void initState() {
     super.initState();
     _user = widget.user;
+    _loadUserOrders();
+  }
+
+  Future<void> _loadUserOrders() async {
+    setState(() => _isLoading = true);
+    try {
+      final allOrders = await _orderService.getAllOrdersAdmin();
+      final userIdStr = _user.id.toString();
+      
+      setState(() {
+        _userOrders = allOrders.where((o) => 
+          o.customerId?.toString() == userIdStr || o.shipperId?.toString() == userIdStr
+        ).toList();
+      });
+    } catch (e) {
+      debugPrint('Error loading user orders: $e');
+    } finally {
+      setState(() => _isLoading = false);
+    }
   }
 
   Future<void> _deleteUser() async {
@@ -126,38 +148,89 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
           ),
         ],
       ),
-      body: _isLoading 
+      body: _isLoading && _userOrders.isEmpty
         ? const Center(child: CircularProgressIndicator()) 
-        : SingleChildScrollView(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildProfileCard(),
-                const SizedBox(height: 24),
-                
-                if (isCustomer) ...[
-                  const Text('Giỏ hàng chi tiết', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 12),
-                  _buildDetailedCartMock(),
+        : RefreshIndicator(
+            onRefresh: _loadUserOrders,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildProfileCard(),
                   const SizedBox(height: 24),
-                ],
+                  
+                  if (isCustomer) ...[
+                    const Text('Giỏ hàng chi tiết (Demo)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 12),
+                    ..._cartItems.map((item) => Card(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: ListTile(
+                        leading: const Icon(Icons.shopping_cart, color: Colors.orange),
+                        title: Text(item['name']),
+                        subtitle: Text('Cửa hàng: ${item['store']}'),
+                        trailing: Text('x${item['qty']}'),
+                      ),
+                    )),
+                    const SizedBox(height: 24),
+                  ],
 
-                if (isShipper) ...[
-                  const Text('Đơn hảng được giao (Gần đây)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 12),
-                  _buildShipperOrdersMock(),
-                  const SizedBox(height: 24),
-                ],
+                  if (isShipper) ...[
+                    const Text('Đơn hàng được giao (Thực tế)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 12),
+                    if (_userOrders.isEmpty)
+                      _buildEmptySection('Chưa có lịch sử giao hàng thực tế')
+                    else
+                      ..._userOrders.map((o) => _buildOrderTile(o)),
+                    const SizedBox(height: 24),
+                  ],
 
-                if (!isShipper) ...[
-                  const Text('Lịch sử đơn hàng (gần đây)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 12),
-                  _buildRecentOrdersMock(),
+                  if (!isShipper) ...[
+                    const Text('Lịch sử đơn hàng (Thực tế)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 12),
+                    if (_userOrders.isEmpty)
+                      _buildEmptySection('Chưa có đơn hàng nào thực tế trong DB')
+                    else
+                      ..._userOrders.map((o) => _buildOrderTile(o)),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
+    );
+  }
+
+  Widget _buildOrderTile(OrderModel order) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: ListTile(
+        title: Text('Đơn hàng #${order.id}'),
+        subtitle: Text('Tổng: ${_currencyFormat.format(order.totalAmount)}'),
+        trailing: Container(
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(color: Colors.blue[50], borderRadius: BorderRadius.circular(4)),
+          child: Text(order.status ?? 'N/A', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blue)),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptySection(String message) {
+    return Card(
+      elevation: 1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Center(
+          child: Column(
+            children: [
+              Icon(Icons.inventory_2_outlined, size: 48, color: Colors.grey[300]),
+              const SizedBox(height: 12),
+              Text(message, style: TextStyle(color: Colors.grey[500], fontSize: 14)),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -235,199 +308,6 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
           style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: color ?? Colors.black87),
         ),
       ],
-    );
-  }
-
-  Widget _buildDetailedCartMock() {
-    int total = 0;
-    for (var item in _cartItems) {
-      if (!item['isHidden']) {
-        total += (item['price'] as int) * (item['qty'] as int);
-      }
-    }
-
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Column(
-        children: [
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: _cartItems.length,
-            separatorBuilder: (_, __) => const Divider(height: 1),
-            itemBuilder: (context, index) {
-              final item = _cartItems[index];
-              final bool isHidden = item['isHidden'];
-              
-              return ListTile(
-                contentPadding: const EdgeInsets.all(16),
-                leading: Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    color: isHidden ? Colors.grey[300] : Colors.purple[50],
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(Icons.shopping_basket, color: isHidden ? Colors.grey : Colors.purple),
-                ),
-                title: Text(
-                  item['name'], 
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600, 
-                    decoration: isHidden ? TextDecoration.lineThrough : null,
-                    color: isHidden ? Colors.grey : Colors.black,
-                  )
-                ),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 4),
-                    Text('Từ: ${item['store']}', style: TextStyle(color: isHidden ? Colors.grey : Colors.blue)),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Text('SL: ${item['qty']} x ${item['price']}đ'),
-                        if (isHidden) ...[
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(color: Colors.red[100], borderRadius: BorderRadius.circular(4)),
-                            child: const Text('Bị ẩn do vi phạm', style: TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold)),
-                          )
-                        ]
-                      ],
-                    ),
-                  ],
-                ),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      '${item['qty'] * item['price']}đ', 
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold, 
-                        color: isHidden ? Colors.grey : Colors.green, 
-                        fontSize: 16
-                      )
-                    ),
-                    IconButton(
-                      icon: Icon(isHidden ? Icons.visibility : Icons.visibility_off, color: isHidden ? Colors.green : Colors.red),
-                      tooltip: isHidden ? 'Bỏ ẩn' : 'Ẩn vi phạm',
-                      onPressed: () {
-                        setState(() {
-                          item['isHidden'] = !isHidden;
-                        });
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(isHidden ? 'Đã cho phép hiển thị lại sản phẩm' : 'Đã ẩn sản phẩm do vi phạm'))
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.grey[50],
-              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Tổng giỏ hàng hợp lệ:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                Text('${total}đ', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.red)),
-              ],
-            ),
-          )
-        ],
-      ),
-    );
-  }
-
-  Widget _buildShipperOrdersMock() {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: ListView.separated(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: 3,
-        separatorBuilder: (_, __) => const Divider(height: 1),
-        itemBuilder: (context, index) {
-          final statuses = ['Đang giao', 'Đã giao (Hôm qua)', 'Đã lấy hàng'];
-          final colors = [Colors.blue, Colors.green, Colors.orange];
-          
-          return ListTile(
-            contentPadding: const EdgeInsets.all(16),
-            leading: CircleAvatar(
-              radius: 24,
-              backgroundColor: colors[index].withOpacity(0.1),
-              child: Icon(Icons.two_wheeler, color: colors[index]),
-            ),
-            title: Text('Đơn hàng #${20245 + index}', style: const TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 4),
-                const Row(
-                  children: [
-                    Icon(Icons.location_on_outlined, size: 14, color: Colors.orange),
-                    SizedBox(width: 4),
-                    Text('Bách Hóa Xanh'),
-                  ],
-                ),
-                const SizedBox(height: 2),
-                const Row(
-                  children: [
-                    Icon(Icons.flag_circle_outlined, size: 14, color: Colors.blue),
-                    SizedBox(width: 4),
-                    Text('123 Lê Lợi, Q.1'),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text('Trạng thái: ${statuses[index]}', style: TextStyle(fontWeight: FontWeight.w600, color: colors[index])),
-              ],
-            ),
-            trailing: const Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text('Thu hộ', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                Text('150k', style: TextStyle(fontWeight: FontWeight.bold)),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildRecentOrdersMock() {
-    return Card(
-      elevation: 1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: ListView.separated(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: 2,
-        separatorBuilder: (_, __) => const Divider(height: 1),
-        itemBuilder: (context, index) {
-          return ListTile(
-            leading: CircleAvatar(
-              backgroundColor: index == 0 ? Colors.green[100] : Colors.orange[100],
-              child: Icon(
-                index == 0 ? Icons.check_circle : Icons.local_shipping,
-                color: index == 0 ? Colors.green : Colors.orange,
-              ),
-            ),
-            title: Text('Đơn hàng #${10024 - index}', style: const TextStyle(fontWeight: FontWeight.w600)),
-            subtitle: Text(index == 0 ? 'Đã giao thành công' : 'Đang giao hàng'),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 14),
-          );
-        },
-      ),
     );
   }
 }

@@ -10,11 +10,16 @@ class ApiUserRepositoryImpl implements UserRepository {
   @override
   Future<List<UserModel>> getUsers({AppType? appType, UserRole? role}) async {
     try {
-      final response = await _apiClient.get('/users');
-      final List data = response.data['data'] as List;
+      final String path = role != null ? '/users/role/${role.name.toUpperCase()}' : '/users';
+      final response = await _apiClient.get(path);
+      
+      final dynamic responseData = response.data['data'];
+      if (responseData == null) return [];
+      
+      final List data = responseData as List;
       return data.map((json) => UserModel.fromJson(json)).toList();
     } on DioException catch (e) {
-      // 403: token chưa có quyền ADMIN -> trả rỗng thay vì crash
+      // 403/401: token chưa có quyền hoặc hết hạn -> trả rỗng
       final status = e.response?.statusCode;
       if (status == 403 || status == 401) {
         return [];
@@ -38,8 +43,8 @@ class ApiUserRepositoryImpl implements UserRepository {
   @override
   Future<void> updateUserStatus(String id, UserStatus status) async {
     try {
-      final bool isActive = status == UserStatus.active;
-      await _apiClient.patch('/users/$id/status/$isActive');
+      // Backend sử dụng endpoint toggle-status để đảo ngược trạng thái
+      await _apiClient.patch('/users/$id/toggle-status');
     } catch (e) {
       throw Exception('Failed to update user status: $e');
     }

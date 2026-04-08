@@ -16,7 +16,19 @@ abstract class AuthRepository {
   /// Register new user
   Future<AuthResponseModel> register({
     required Map<String, dynamic> userData,
-    required AppType appType, // Bây giờ AppType đã được import
+    required AppType appType,
+  });
+
+  /// Update user profile
+  Future<UserModel> updateProfile({
+    required Map<String, dynamic> userData,
+  });
+
+  /// Change user password
+  Future<void> changePassword({
+    required String oldPassword,
+    required String newPassword,
+    required String confirmPassword,
   });
 
   /// Logout current user
