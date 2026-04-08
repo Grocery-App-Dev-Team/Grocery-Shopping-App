@@ -53,21 +53,31 @@ public class PaymentService {
 
     /**
      * Xử lý callback từ cổng thanh toán
+     * Idempotent: nếu payment đã được xử lý (status != PENDING), bỏ qua
+     * 
+     * Lưu ý: Khi update payments.status, DB Trigger sẽ tự động sync vào orders.payment_status
+     * Không cần cập nhật order.payment_status trong code - trigger làm việc này
      */
     @Transactional
     public void handlePaymentResult(Long paymentId, boolean success, String transactionCode) {
         Payment payment = paymentRepository.findById(paymentId)
                 .orElseThrow(() -> new IllegalArgumentException("Payment not found"));
 
+        // Idempotency check: chỉ xử lý nếu payment vẫn PENDING
+        // Nếu đã xử lý trước đó (SUCCESS/FAILED), bỏ qua
+        if (payment.getStatus() != Payment.PaymentStatus.PENDING) {
+            log.warn("Payment #{} already processed with status {}, skipping duplicate callback", 
+                    paymentId, payment.getStatus());
+            return;
+        }
+
         if (success) {
             payment.setStatus(Payment.PaymentStatus.SUCCESS);
             payment.setTransactionCode(transactionCode);
-            // Cập nhật trạng thái payment
             paymentRepository.save(payment);
-
-            // Update order paymentStatus -> SUCCESS and order status -> CONFIRMED
+            // ⚡ Trigger tr_sync_payment_status_on_update sẽ tự động update orders.payment_status = SUCCESS
+            
             Order order = payment.getOrder();
-            order.setPaymentStatus(Payment.PaymentStatus.SUCCESS);
             order.setStatus(Order.OrderStatus.CONFIRMED);
             orderRepository.save(order);
             log.info("Payment #{} SUCCESS, order #{} set to CONFIRMED", paymentId, order.getId());
@@ -75,11 +85,9 @@ public class PaymentService {
             payment.setStatus(Payment.PaymentStatus.FAILED);
             payment.setTransactionCode(transactionCode);
             paymentRepository.save(payment);
+            // ⚡ Trigger tr_sync_payment_status_on_update sẽ tự động update orders.payment_status = FAILED
 
-            Order order = payment.getOrder();
-            order.setPaymentStatus(Payment.PaymentStatus.FAILED);
-            orderRepository.save(order);
-            log.info("Payment #{} FAILED for order #{}", paymentId, order.getId());
+            log.info("Payment #{} FAILED", paymentId);
         }
     }
 }

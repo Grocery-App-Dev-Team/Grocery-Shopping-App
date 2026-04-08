@@ -2,6 +2,7 @@ package com.grocery.server.payment.controller;
 
 import com.grocery.server.payment.dto.InitiatePaymentRequest;
 import com.grocery.server.payment.dto.InitiatePaymentResponse;
+import com.grocery.server.payment.dto.PaymentStatusResponse;
 import com.grocery.server.payment.entity.Payment;
 import com.grocery.server.payment.service.PaymentService;
 import com.grocery.server.payment.config.PaymentProperties;
@@ -29,10 +30,25 @@ public class PaymentController {
         switch (method) {
             case MOMO -> redirect = momoClient.createPaymentUrl(payment);
             case VNPAY -> redirect = vnpayClient.createPaymentUrl(payment, null);
+            case COD -> redirect = "";  // COD: no redirect needed, client will handle payment locally
             default -> redirect = "";
         }
 
         return ResponseEntity.ok(new InitiatePaymentResponse(payment.getId(), redirect));
+    }
+
+    /**
+     * GET /api/payments/{id} - Retrieve payment status
+     * Used by mobile app to check payment status without polling callback
+     */
+    @GetMapping("/{id}")
+    public ResponseEntity<?> getPaymentStatus(@PathVariable Long id) {
+        Payment payment = paymentService.findById(id)
+                .orElse(null);
+        if (payment == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(PaymentStatusResponse.fromEntity(payment));
     }
 
     /**

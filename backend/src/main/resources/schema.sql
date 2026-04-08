@@ -223,5 +223,60 @@ INSERT INTO product_units (product_id, unit_name, price, stock_quantity) VALUES
 (4, 'Túi 10kg', 240000.00, 25);
 
 -- =========================================================
+-- 10. Database Triggers (Tự động sync payment_status)
+-- =========================================================
+
+/**
+ * TRIGGER: tr_sync_payment_status_on_insert
+ * 
+ * Mô tả: Khi insert payment record mới, tự động cập nhật payment_status ở bảng orders
+ * Lý do: Đảm bảo orders.payment_status luôn sync với payments.status (latest payment)
+ * 
+ * Scenario:
+ *   - User thanh toán MOMO → INSERT payments (status=PENDING) → không sync (vì PENDING)
+ *   - Callback từ Momo → UPDATE payments (status=SUCCESS) → trigger UPDATE order
+ */
+DELIMITER $$
+
+CREATE TRIGGER tr_sync_payment_status_on_insert
+AFTER INSERT ON payments
+FOR EACH ROW
+BEGIN
+    -- Chỉ sync nếu payment status != PENDING (tức đã có kết quả: SUCCESS/FAILED/REFUNDED)
+    IF NEW.status != 'PENDING' THEN
+        UPDATE orders 
+        SET payment_status = NEW.status 
+        WHERE id = NEW.order_id;
+    END IF;
+END$$
+
+/**
+ * TRIGGER: tr_sync_payment_status_on_update
+ * 
+ * Mô tả: Khi update payment status, tự động cập nhật orders.payment_status
+ * Lý do: Khi payment callback đến, update payment status → trigger update order
+ * 
+ * Scenario:
+ *   - Callback MOMO: UPDATE payments SET status='SUCCESS' WHERE id = 999
+ *   - Trigger tự động: UPDATE orders SET payment_status='SUCCESS' WHERE id = <order_id>
+ *
+ * Defensive: Kiểm tra xem order không bị deleted (EXISTS check)
+ */
+CREATE TRIGGER tr_sync_payment_status_on_update
+AFTER UPDATE ON payments
+FOR EACH ROW
+BEGIN
+    -- Chỉ cập nhật nếu status thay đổi (NEW.status != OLD.status)
+    -- Và order vẫn tồn tại (defensive check)
+    IF NEW.status != OLD.status THEN
+        UPDATE orders 
+        SET payment_status = NEW.status 
+        WHERE id = NEW.order_id;
+    END IF;
+END$$
+
+DELIMITER ;
+
+-- =========================================================
 -- END OF SCHEMA
 -- =========================================================
