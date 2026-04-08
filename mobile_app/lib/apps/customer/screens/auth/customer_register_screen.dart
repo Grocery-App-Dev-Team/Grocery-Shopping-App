@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '../../../../core/location/province_api.dart';
 import '../../../../core/theme/customer_theme.dart';
 import '../../../../shared/widgets/custom_text_field.dart';
+import '../../bloc/customer_auth_bloc.dart';
 
 class CustomerRegisterScreen extends StatefulWidget {
   const CustomerRegisterScreen({super.key});
@@ -13,54 +17,148 @@ class _CustomerRegisterScreenState extends State<CustomerRegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
-  final _emailController = TextEditingController();
   final _addressController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
   bool _isLoading = false;
   bool _agreeToTerms = false;
 
+  final _provinceApi = ProvinceApi();
+  List<LocationItem> _provinces = [];
+  List<LocationItem> _districts = [];
+  List<LocationItem> _wards = [];
+  LocationItem? _selectedProvince;
+  LocationItem? _selectedDistrict;
+  LocationItem? _selectedWard;
+  bool _isLoadingLocation = false;
+
   @override
-  Widget build(BuildContext context) => Scaffold(
-    backgroundColor: CustomerTheme.backgroundColor,
-    appBar: AppBar(
-      title: const Text('Đăng ký tài khoản'),
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      foregroundColor: CustomerTheme.primaryColor,
-    ),
-    body: SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHeader(),
-              const SizedBox(height: 32),
-              _buildPersonalInfo(),
-              const SizedBox(height: 24),
-              _buildContactInfo(),
-              const SizedBox(height: 24),
-              _buildSecurityInfo(),
-              const SizedBox(height: 20),
-              _buildTermsCheckbox(),
-              const SizedBox(height: 32),
-              _buildRegisterButton(),
-              const SizedBox(height: 20),
-              _buildLoginLink(),
-            ],
+  void initState() {
+    super.initState();
+    _loadProvinces();
+  }
+
+  Future<void> _loadProvinces() async {
+    setState(() => _isLoadingLocation = true);
+    try {
+      _provinces = await _provinceApi.getProvinces();
+    } finally {
+      if (mounted) setState(() => _isLoadingLocation = false);
+    }
+  }
+
+  Future<void> _onProvinceChanged(LocationItem? item) async {
+    setState(() {
+      _selectedProvince = item;
+      _selectedDistrict = null;
+      _selectedWard = null;
+      _districts = [];
+      _wards = [];
+    });
+    _updateAddressText();
+    if (item == null) return;
+    final districts = await _provinceApi.getDistricts(item.code);
+    if (mounted) {
+      setState(() => _districts = districts);
+    }
+  }
+
+  Future<void> _onDistrictChanged(LocationItem? item) async {
+    setState(() {
+      _selectedDistrict = item;
+      _selectedWard = null;
+      _wards = [];
+    });
+    _updateAddressText();
+    if (item == null) return;
+    final wards = await _provinceApi.getWards(item.code);
+    if (mounted) {
+      setState(() => _wards = wards);
+    }
+  }
+
+  void _onWardChanged(LocationItem? item) {
+    setState(() => _selectedWard = item);
+    _updateAddressText();
+  }
+
+  void _updateAddressText() {
+    final parts = [
+      _selectedWard?.name,
+      _selectedDistrict?.name,
+      _selectedProvince?.name,
+    ].where((e) => e != null && e.isNotEmpty).map((e) => e!).toList();
+    _addressController.text = parts.join(', ');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocListener<CustomerAuthBloc, CustomerAuthState>(
+      listener: (context, state) {
+        if (state is CustomerAuthLoading) {
+          setState(() => _isLoading = true);
+        }
+
+        if (state is CustomerAuthSuccess) {
+          setState(() => _isLoading = false);
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Đăng ký thành công!'),
+              backgroundColor: CustomerTheme.primaryColor,
+            ),
+          );
+          Navigator.pop(context);
+        }
+
+        if (state is CustomerAuthFailure) {
+          setState(() => _isLoading = false);
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(state.message), backgroundColor: Colors.red),
+          );
+        }
+      },
+      child: Scaffold(
+        backgroundColor: CustomerTheme.backgroundColor,
+        appBar: AppBar(
+          title: const Text('Đăng ký tài khoản'),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          foregroundColor: CustomerTheme.primaryColor,
+        ),
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildHeader(),
+                  const SizedBox(height: 32),
+                  _buildPersonalInfo(),
+                  const SizedBox(height: 24),
+                  _buildContactInfo(),
+                  const SizedBox(height: 24),
+                  _buildSecurityInfo(),
+                  const SizedBox(height: 20),
+                  _buildTermsCheckbox(),
+                  const SizedBox(height: 32),
+                  _buildRegisterButton(),
+                  const SizedBox(height: 20),
+                  _buildLoginLink(),
+                ],
+              ),
+            ),
           ),
         ),
       ),
-    ),
-  );
+    );
+  }
 
   Widget _buildHeader() => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      // Customer icon
       Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -85,11 +183,7 @@ class _CustomerRegisterScreenState extends State<CustomerRegisterScreen> {
       const SizedBox(height: 8),
       Text(
         'Đăng ký để mua sắm và giao hàng tận nhà',
-        style: TextStyle(
-          fontSize: 16,
-          color: Colors.grey[600],
-          height: 1.5,
-        ),
+        style: TextStyle(fontSize: 16, color: Colors.grey[600], height: 1.5),
       ),
     ],
   );
@@ -118,7 +212,7 @@ class _CustomerRegisterScreenState extends State<CustomerRegisterScreen> {
       const SizedBox(height: 20),
       CustomTextField(
         label: 'Số điện thoại *',
-        hint: 'Nhập số điện thoại',
+        hint: 'Nhập số điện thoại (vd: 0352773474)',
         controller: _phoneController,
         keyboardType: TextInputType.phone,
         prefixIcon: Icons.phone,
@@ -140,24 +234,34 @@ class _CustomerRegisterScreenState extends State<CustomerRegisterScreen> {
         ),
       ),
       const SizedBox(height: 16),
-      CustomTextField(
-        label: 'Email',
-        hint: 'Nhập địa chỉ email (tùy chọn)',
-        controller: _emailController,
-        keyboardType: TextInputType.emailAddress,
-        prefixIcon: Icons.email,
-        validator: _validateEmail,
-        focusColor: CustomerTheme.primaryColor,
+      _buildLocationDropdown(
+        label: 'Tỉnh/Thành phố *',
+        value: _selectedProvince,
+        items: _provinces,
+        onChanged: _isLoadingLocation ? null : _onProvinceChanged,
+        prefixIcon: Icons.location_city_outlined,
       ),
-      const SizedBox(height: 20),
-      CustomTextField(
-        label: 'Địa chỉ giao hàng *',
-        hint: 'Nhập địa chỉ nhận hàng',
-        controller: _addressController,
-        prefixIcon: Icons.location_on,
-        validator: _validateAddress,
-        focusColor: CustomerTheme.primaryColor,
-        maxLines: 2,
+      const SizedBox(height: 16),
+      _buildLocationDropdown(
+        label: 'Quận/Huyện *',
+        value: _selectedDistrict,
+        items: _districts,
+        onChanged: _selectedProvince == null ? null : _onDistrictChanged,
+        prefixIcon: Icons.map_outlined,
+      ),
+      const SizedBox(height: 16),
+      _buildLocationDropdown(
+        label: 'Phường/Xã *',
+        value: _selectedWard,
+        items: _wards,
+        onChanged: _selectedDistrict == null ? null : _onWardChanged,
+        prefixIcon: Icons.place_outlined,
+        validator: (value) {
+          if (value == null) {
+            return 'Vui lòng chọn địa chỉ';
+          }
+          return null;
+        },
       ),
     ],
   );
@@ -181,16 +285,6 @@ class _CustomerRegisterScreenState extends State<CustomerRegisterScreen> {
         isPassword: true,
         prefixIcon: Icons.lock,
         validator: _validatePassword,
-        focusColor: CustomerTheme.primaryColor,
-      ),
-      const SizedBox(height: 20),
-      CustomTextField(
-        label: 'Xác nhận mật khẩu *',
-        hint: 'Nhập lại mật khẩu',
-        controller: _confirmPasswordController,
-        isPassword: true,
-        prefixIcon: Icons.lock_outline,
-        validator: _validateConfirmPassword,
         focusColor: CustomerTheme.primaryColor,
       ),
     ],
@@ -219,7 +313,7 @@ class _CustomerRegisterScreenState extends State<CustomerRegisterScreen> {
                 TextSpan(
                   text: 'Điều khoản sử dụng',
                   style: TextStyle(
-                    color: Color(0xFF2196F3),  // CustomerTheme.primaryColor
+                    color: Color(0xFF2196F3),
                     fontWeight: FontWeight.w500,
                     decoration: TextDecoration.underline,
                   ),
@@ -228,7 +322,7 @@ class _CustomerRegisterScreenState extends State<CustomerRegisterScreen> {
                 TextSpan(
                   text: 'Chính sách bảo mật',
                   style: TextStyle(
-                    color: Color(0xFF2196F3),  // CustomerTheme.primaryColor
+                    color: Color(0xFF2196F3),
                     fontWeight: FontWeight.w500,
                     decoration: TextDecoration.underline,
                   ),
@@ -250,36 +344,28 @@ class _CustomerRegisterScreenState extends State<CustomerRegisterScreen> {
       style: ElevatedButton.styleFrom(
         backgroundColor: CustomerTheme.primaryColor,
         foregroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
-      child: _isLoading 
-        ? const SizedBox(
-            width: 20,
-            height: 20,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              color: Colors.white,
+      child: _isLoading
+          ? const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+              ),
+            )
+          : const Text(
+              'Đăng ký',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
-          )
-        : const Text(
-            'Đăng ký',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
     ),
   );
 
   Widget _buildLoginLink() => Row(
     mainAxisAlignment: MainAxisAlignment.center,
     children: [
-      Text(
-        'Đã có tài khoản? ',
-        style: TextStyle(color: Colors.grey[600]),
-      ),
+      Text('Đã có tài khoản? ', style: TextStyle(color: Colors.grey[600])),
       GestureDetector(
         onTap: () => Navigator.pop(context),
         child: const Text(
@@ -293,7 +379,6 @@ class _CustomerRegisterScreenState extends State<CustomerRegisterScreen> {
     ],
   );
 
-  // Validation methods
   String? _validateName(String? value) {
     if (value == null || value.isEmpty) {
       return 'Vui lòng nhập họ và tên';
@@ -314,22 +399,11 @@ class _CustomerRegisterScreenState extends State<CustomerRegisterScreen> {
     return null;
   }
 
-  String? _validateEmail(String? value) {
-    if (value == null || value.isEmpty) {
-      return null; // Email is optional
-    }
-    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-      return 'Địa chỉ email không hợp lệ';
-    }
-    return null;
-  }
-
   String? _validateAddress(String? value) {
-    if (value == null || value.isEmpty) {
-      return 'Vui lòng nhập địa chỉ giao hàng';
-    }
-    if (value.trim().length < 5) {
-      return 'Địa chỉ phải có ít nhất 5 ký tự';
+    if (_selectedProvince == null ||
+        _selectedDistrict == null ||
+        _selectedWard == null) {
+      return 'Vui lòng chọn đầy đủ địa chỉ';
     }
     return null;
   }
@@ -344,16 +418,6 @@ class _CustomerRegisterScreenState extends State<CustomerRegisterScreen> {
     return null;
   }
 
-  String? _validateConfirmPassword(String? value) {
-    if (value == null || value.isEmpty) {
-      return 'Vui lòng xác nhận mật khẩu';
-    }
-    if (value != _passwordController.text) {
-      return 'Mật khẩu xác nhận không khớp';
-    }
-    return null;
-  }
-
   Future<void> _handleRegister() async {
     if (!_formKey.currentState!.validate()) return;
     if (!_agreeToTerms) {
@@ -363,45 +427,59 @@ class _CustomerRegisterScreenState extends State<CustomerRegisterScreen> {
       return;
     }
 
-    setState(() => _isLoading = true);
-
-    try {
-      // Mock customer registration API call
-      await Future.delayed(const Duration(seconds: 2));
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Đăng ký thành công! Chào mừng bạn đến với Đi Chợ Hộ'),
-            backgroundColor: CustomerTheme.primaryColor,
-          ),
-        );
-        Navigator.pop(context); // Back to login
-      }
-    } catch (error) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Đăng ký thất bại: $error'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
+    context.read<CustomerAuthBloc>().add(
+      CustomerRegisterEvent(
+        phoneNumber: _phoneController.text,
+        password: _passwordController.text,
+        fullName: _nameController.text,
+        address: _addressController.text,
+      ),
+    );
   }
 
   @override
   void dispose() {
     _nameController.dispose();
     _phoneController.dispose();
-    _emailController.dispose();
     _addressController.dispose();
     _passwordController.dispose();
-    _confirmPasswordController.dispose();
     super.dispose();
+  }
+
+  Widget _buildLocationDropdown({
+    required String label,
+    required List<LocationItem> items,
+    required IconData prefixIcon,
+    LocationItem? value,
+    FormFieldValidator<LocationItem>? validator,
+    ValueChanged<LocationItem?>? onChanged,
+  }) {
+    return DropdownButtonFormField<LocationItem>(
+      value: value,
+      items: items
+          .map(
+            (item) => DropdownMenuItem<LocationItem>(
+              value: item,
+              child: Text(item.name),
+            ),
+          )
+          .toList(),
+      onChanged: onChanged,
+      validator: validator ?? (_) => _validateAddress(null),
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(prefixIcon),
+        filled: true,
+        fillColor: Colors.white,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+      ),
+    );
   }
 }

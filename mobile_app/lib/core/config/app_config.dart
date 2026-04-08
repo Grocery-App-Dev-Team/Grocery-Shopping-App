@@ -2,28 +2,7 @@ import '../enums/app_type.dart';
 
 class AppConfig {
   // Thay đổi cái này để build app khác nhau
-  //static const AppType currentApp = AppType.customer; // <-- Change this
-
-  //static const AppType currentApp = AppType.store;
-
-  //static const AppType currentApp = AppType.shipper;
-
-  static const String app =
-    String.fromEnvironment('APP', defaultValue: 'admin');
-
-static AppType get currentApp {
-  switch (app) {
-    case 'customer':
-      return AppType.customer;
-    case 'store':
-      return AppType.store;
-    case 'shipper':
-      return AppType.shipper;
-    case 'admin':
-    default:
-      return AppType.admin;
-  }
-}
+  static const AppType currentApp = AppType.shipper;
 
   static String get appName {
     switch (currentApp) {
@@ -37,7 +16,7 @@ static AppType get currentApp {
         return 'Đi Chợ Hộ - Quản Trị Viên';
     }
   }
-  
+
   static String get appId {
     switch (currentApp) {
       case AppType.customer:

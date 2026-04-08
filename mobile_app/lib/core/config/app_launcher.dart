@@ -1,20 +1,18 @@
 import 'package:flutter/material.dart';
-import '../enums/app_type.dart'; // Import để sử dụng Enum và Extension displayName
-import 'app_config.dart';
+import '../enums/app_type.dart';
 
 class AppLauncher extends StatelessWidget {
   const AppLauncher({super.key});
 
-  /// Helper cung cấp màu và tên riêng cho Launcher 
-  /// (Vì AppConfig hiện tại chỉ chứa thông tin của App đang build)
+  /// Helper cung cấp màu và tên riêng cho Launcher
   Map<String, dynamic> _getAppUIInfo(AppType type) {
     switch (type) {
       case AppType.customer:
         return {'name': 'Khách Hàng', 'color': 0xFF2E7D32}; // Màu xanh lá
       case AppType.store:
-        return {'name': 'Cửa Hàng', 'color': 0xFF1565C0};   // Màu xanh dương
+        return {'name': 'Cửa Hàng', 'color': 0xFF1565C0}; // Màu xanh dương
       case AppType.shipper:
-        return {'name': 'Giao Hàng', 'color': 0xFFE65100};  // Màu cam
+        return {'name': 'Giao Hàng', 'color': 0xFFE65100}; // Màu cam
       case AppType.admin:
         return {'name': 'Quản Trị Viên', 'color': 0xFF6A1B9A}; // Màu tím
     }
@@ -32,7 +30,7 @@ class AppLauncher extends StatelessWidget {
         padding: const EdgeInsets.all(16.0),
         child: GridView.count(
           crossAxisCount: 2,
-          childAspectRatio: 1.2,
+          childAspectRatio: 1.15,
           crossAxisSpacing: 16,
           mainAxisSpacing: 16,
           children: AppType.values.map((appType) {
@@ -44,9 +42,13 @@ class AppLauncher extends StatelessWidget {
     );
   }
 
-  Widget _buildAppCard(BuildContext context, AppType appType, Map<String, dynamic> uiInfo) {
-    final Color primaryColor = Color(uiInfo['color']);
-    final String appName = uiInfo['name'];
+  Widget _buildAppCard(
+    BuildContext context,
+    AppType appType,
+    Map<String, dynamic> uiInfo,
+  ) {
+    final Color primaryColor = Color(uiInfo['color'] as int);
+    final String appName = uiInfo['name'] as String;
 
     return Card(
       elevation: 4,
@@ -55,6 +57,7 @@ class AppLauncher extends StatelessWidget {
         onTap: () => _launchApp(context, appType, appName, primaryColor),
         borderRadius: BorderRadius.circular(12),
         child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
             gradient: LinearGradient(
@@ -62,34 +65,22 @@ class AppLauncher extends StatelessWidget {
               end: Alignment.bottomRight,
               colors: [
                 primaryColor,
-                primaryColor.withValues(alpha: 0.7),
+                primaryColor.withAlpha(179), // 0.7 * 255
               ],
             ),
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                _getAppIcon(appType),
-                size: 42,
-                color: Colors.white,
-              ),
+              Icon(_getIconForApp(appType), size: 40, color: Colors.white),
               const SizedBox(height: 12),
               Text(
                 appName,
+                textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                appType.displayName, // Đã hoạt động nhờ extension bên app_type.dart
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12,
                 ),
               ),
             ],
@@ -99,10 +90,10 @@ class AppLauncher extends StatelessWidget {
     );
   }
 
-  IconData _getAppIcon(AppType appType) {
-    switch (appType) {
+  IconData _getIconForApp(AppType type) {
+    switch (type) {
       case AppType.customer:
-        return Icons.shopping_cart;
+        return Icons.shopping_bag;
       case AppType.store:
         return Icons.store;
       case AppType.shipper:
@@ -112,19 +103,17 @@ class AppLauncher extends StatelessWidget {
     }
   }
 
-  void _launchApp(BuildContext context, AppType appType, String appName, Color color) {
-    // Lưu ý: Không thể dùng AppConfig.switchApp(appType) vì ứng dụng đã fix cứng 
-    // AppType lúc biên dịch qua String.fromEnvironment.
-    
+  void _launchApp(
+    BuildContext context,
+    AppType appType,
+    String appName,
+    Color primaryColor,
+  ) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Đang mô phỏng mở app $appName...'),
-        backgroundColor: color,
-        behavior: SnackBarBehavior.floating,
+        content: Text('Khởi động app: $appName'),
+        backgroundColor: primaryColor,
       ),
     );
-
-    // Tuỳ vào file main.dart, bạn có thể đẩy người dùng về Route của app đó
-    // Navigator.of(context).pushReplacementNamed('/${appType.name}');
   }
 }
