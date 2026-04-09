@@ -97,6 +97,10 @@ class CustomerAuthRepository {
         AuthSession.fullName = (profile['fullName'] ?? '').toString();
         AuthSession.address = (profile['address'] ?? '').toString();
         AuthSession.phoneNumber = (profile['phoneNumber'] ?? '').toString();
+        AuthSession.avatarUrl = (profile['avatarUrl'] ?? '').toString();
+        if (AuthSession.avatarUrl != null && AuthSession.avatarUrl!.isEmpty) {
+          AuthSession.avatarUrl = null;
+        }
       }
     } catch (_) {
       // ignore profile fetch errors

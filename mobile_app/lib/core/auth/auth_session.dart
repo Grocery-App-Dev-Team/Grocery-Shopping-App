@@ -3,6 +3,7 @@ class AuthSession {
   static String? fullName;
   static String? address;
   static String? phoneNumber;
+  static String? avatarUrl;
   static List<Map<String, dynamic>> localOrders = [];
   static List<Map<String, dynamic>> savedAddresses = [];
   static int selectedAddressIndex = 0;
@@ -16,6 +17,7 @@ class AuthSession {
     fullName = null;
     address = null;
     phoneNumber = null;
+    avatarUrl = null;
     localOrders = [];
     savedAddresses = [];
     selectedAddressIndex = 0;
