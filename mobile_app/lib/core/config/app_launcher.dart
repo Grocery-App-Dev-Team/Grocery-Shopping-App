@@ -88,7 +88,6 @@ class AppLauncher extends StatelessWidget {
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                 ),
-                textAlign: TextAlign.center,
               ),
               const SizedBox(height: 6),
               Text(
@@ -134,3 +133,4 @@ void _launchApp(
       ),
     );
   }
+}

@@ -46,9 +46,6 @@ class _OrderManagementScreenState extends State<OrderManagementScreen> with Sing
     try {
       await _orderService.discoverRealOrders(
         forceRefresh: force,
-        onProgress: (count) {
-          if (mounted) setState(() => _discoveredCount = count);
-        },
       );
     } catch (e) {
       debugPrint('Sync error: $e');

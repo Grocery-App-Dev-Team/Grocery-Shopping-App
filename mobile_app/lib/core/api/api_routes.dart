@@ -22,7 +22,6 @@ class ApiRoutes {
   static const String availableOrders = '/orders/available';
   static const String myDeliveries = '/orders/my-deliveries';
   static const String myStoreOrders = '/orders/my-store-orders';
-  static const String adminOrders = '/orders/admin/all';
   static String assignShipper(String id) => '/orders/$id/assign-shipper';
   static String updateOrderStatus(String id) => '/orders/$id/status';
   static String orderById(String id) => '/orders/$id';

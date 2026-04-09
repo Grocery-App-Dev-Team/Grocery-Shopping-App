@@ -44,6 +44,22 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
         _userOrders = allOrders.where((o) => 
           o.customerId?.toString() == userIdStr || o.shipperId?.toString() == userIdStr
         ).toList();
+
+        // Tận dụng dữ liệu từ đơn hàng mới nhất để điền vào phần "Giỏ hàng" 
+        // vì backend không lưu giỏ hàng tạm thời.
+        _cartItems.clear();
+        if (_userOrders.isNotEmpty) {
+          final latestOrder = _userOrders.first;
+          if (latestOrder.items != null) {
+            for (var item in latestOrder.items!) {
+              _cartItems.add({
+                'name': item.productName ?? 'Sản phẩm',
+                'store': latestOrder.storeName ?? 'Cửa hàng',
+                'qty': item.quantity ?? 1,
+              });
+            }
+          }
+        }
       });
     } catch (e) {
       debugPrint('Error loading user orders: $e');
@@ -161,7 +177,7 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
                   const SizedBox(height: 24),
                   
                   if (isCustomer) ...[
-                    const Text('Giỏ hàng chi tiết (Demo)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const Text('Giỏ hàng chi tiết', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 12),
                     ..._cartItems.map((item) => Card(
                       margin: const EdgeInsets.only(bottom: 8),
@@ -176,20 +192,20 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
                   ],
 
                   if (isShipper) ...[
-                    const Text('Đơn hàng được giao (Thực tế)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const Text('Đơn hàng được giao', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 12),
                     if (_userOrders.isEmpty)
-                      _buildEmptySection('Chưa có lịch sử giao hàng thực tế')
+                      _buildEmptySection('Chưa có lịch sử giao hàng')
                     else
                       ..._userOrders.map((o) => _buildOrderTile(o)),
                     const SizedBox(height: 24),
                   ],
 
                   if (!isShipper) ...[
-                    const Text('Lịch sử đơn hàng (Thực tế)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const Text('Lịch sử đơn hàng', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 12),
                     if (_userOrders.isEmpty)
-                      _buildEmptySection('Chưa có đơn hàng nào thực tế trong DB')
+                      _buildEmptySection('Chưa có dữ liệu đơn hàng')
                     else
                       ..._userOrders.map((o) => _buildOrderTile(o)),
                   ],

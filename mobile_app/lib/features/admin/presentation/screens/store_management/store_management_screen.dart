@@ -29,26 +29,33 @@ class _StoreManagementScreenState extends State<StoreManagementScreen> {
   }
 
   Future<void> _loadStoreRevenue() async {
+    if (!mounted) return;
     setState(() => _isLoadingRevenue = true);
+    
     try {
+      // getAllOrdersAdmin giờ đây đã an toàn (không gây 403 UI)
       final orders = await _orderService.getAllOrdersAdmin();
+      
+      debugPrint('📊 StoreManagement: Đã tải được ${orders.length} đơn hàng qua cơ chế khám phá.');
+      
       final Map<String, double> revenueMap = {};
       for (var o in orders) {
         final status = (o.status ?? '').toUpperCase();
+        // Tính doanh thu dựa trên các đơn hàng không bị hủy
         if (status != 'CANCELLED') {
-           final sId = (o.storeId ?? o.storeName ?? 'Khác').toString();
+           final sId = o.storeId?.toString() ?? 'unknown';
            revenueMap[sId] = (revenueMap[sId] ?? 0) + (o.totalAmount ?? 0).toDouble();
         }
       }
+      
       if (!mounted) return;
       setState(() {
         _storeRevenueMap = revenueMap;
         _isLoadingRevenue = false;
       });
     } catch (e) {
-      debugPrint('Error loading store revenue: $e');
-      if (!mounted) return;
-      setState(() => _isLoadingRevenue = false);
+      debugPrint('⚠️ Error loading store revenue (Handled): $e');
+      if (mounted) setState(() => _isLoadingRevenue = false);
     }
   }
 
