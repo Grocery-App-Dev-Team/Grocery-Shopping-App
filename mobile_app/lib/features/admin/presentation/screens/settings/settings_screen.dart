@@ -392,7 +392,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ? LinearGradient(colors: [Colors.indigo[400]!, Colors.indigo[700]!])
                   : null,
               borderRadius: BorderRadius.circular(18),
-              boxShadow: [BoxShadow(color: Colors.indigo.withOpacity(0.2), blurRadius: 8, offset: const Offset(0, 4))],
+                boxShadow: [BoxShadow(color: Colors.indigo.withValues(alpha: 0.2), blurRadius: 8, offset: const Offset(0, 4))],
               image: avatarUrl != null && avatarUrl.isNotEmpty
                   ? DecorationImage(image: NetworkImage(avatarUrl), fit: BoxFit.cover)
                   : null,

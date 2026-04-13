@@ -90,7 +90,10 @@ class OrderService {
 
   /// Cơ chế Khám phá Đơn hàng (TUYỆT CHIÊU: Utilizing existing authenticated detail API)
   /// Vì Backend giới hạn List Order, Admin sẽ "khám phá" đơn hàng bằng cách thử các ID thông qua /orders/{id}
-  Future<List<OrderModel>> discoverRealOrders({bool forceRefresh = false}) async {
+  Future<List<OrderModel>> discoverRealOrders({
+    bool forceRefresh = false,
+    void Function(int discoveredCount)? onProgress,
+  }) async {
     if (!forceRefresh && _cachedDiscoveredOrders != null) {
       return _cachedDiscoveredOrders!;
     }
@@ -138,17 +141,6 @@ class OrderService {
       debugPrint('❌ Lỗi trong quá trình khám phá Đơn hàng theo User: $e');
       return _cachedDiscoveredOrders ?? _mockOrders;
     }
-
-    final results = await Future.wait(scanTasks);
-    for (var order in results) {
-      if (order != null) foundOrders.add(order);
-    }
-
-    // Sắp xếp theo ID mới nhất
-    foundOrders.sort((a, b) => (b.id ?? 0).compareTo(a.id ?? 0));
-
-    _cachedDiscoveredOrders = foundOrders;
-    return foundOrders;
   }
 
   // Cờ để biết endpoint /orders/available có bị giới hạn (403) hay không

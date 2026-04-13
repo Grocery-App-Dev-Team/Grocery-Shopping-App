@@ -287,7 +287,7 @@ class _ProductManagementScreenState extends State<ProductManagementScreen> {
       setState(() => _isUploading = true);
       
       final String endpoint = ApiRoutes.uploadProductWithId(product.id.toString());
-      final String newUrl = await _uploadService.uploadImage(endpoint, image);
+      await _uploadService.uploadImage(endpoint, image);
 
       if (mounted) {
         setState(() {

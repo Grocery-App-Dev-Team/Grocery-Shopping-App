@@ -283,7 +283,7 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
                 children: [
                   CircleAvatar(
                     radius: 40,
-                    backgroundColor: Colors.purple.withOpacity(0.1),
+                    backgroundColor: Colors.purple.withValues(alpha: 0.1),
                     backgroundImage: _user.avatarUrl != null && _user.avatarUrl!.isNotEmpty 
                         ? NetworkImage(_user.avatarUrl!)
                         : null,
@@ -325,7 +325,7 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
 
       setState(() => _isLoading = true);
       
-      final String endpoint = ApiRoutes.uploadAvatar;
+      const String endpoint = ApiRoutes.uploadAvatar;
       final String newUrl = await _uploadService.uploadImage(endpoint, image);
 
       if (mounted) {

@@ -284,7 +284,7 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
                 children: [
                   CircleAvatar(
                     radius: 40,
-                    backgroundColor: Colors.blue.withOpacity(0.1),
+                    backgroundColor: Colors.blue.withValues(alpha: 0.1),
                     backgroundImage: _store['imageUrl'] != null && _store['imageUrl'].toString().isNotEmpty
                         ? NetworkImage(_store['imageUrl'])
                         : null,

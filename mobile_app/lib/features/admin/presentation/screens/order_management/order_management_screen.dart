@@ -28,7 +28,7 @@ class _OrderManagementScreenState extends State<OrderManagementScreen> with Sing
     'Đã hủy',
   ];
 
-  int _discoveredCount = 0;
+  final int _discoveredCount = 0;
   bool _isSyncing = false;
   Future<List<OrderModel>>? _ordersFuture;
 

@@ -34,7 +34,7 @@ class UserListItem extends StatelessWidget {
               children: [
                 CircleAvatar(
                   radius: 28,
-                  backgroundColor: _getRoleColor(user.role).withOpacity(0.2),
+                  backgroundColor: _getRoleColor(user.role).withValues(alpha: 0.2),
                   backgroundImage: user.avatarUrl != null && user.avatarUrl!.isNotEmpty
                       ? NetworkImage(user.avatarUrl!)
                       : null,

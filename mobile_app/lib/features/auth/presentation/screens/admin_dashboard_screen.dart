@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:grocery_shopping_app/features/auth/bloc/auth_bloc.dart';
+import 'package:grocery_shopping_app/features/auth/bloc/auth_event.dart';
 import 'package:grocery_shopping_app/features/auth/bloc/auth_state.dart';
 import 'package:grocery_shopping_app/features/admin/presentation/screens/user_management/user_management_screen.dart';
 import 'package:grocery_shopping_app/features/admin/presentation/screens/store_management/store_management_screen.dart';
@@ -8,10 +9,6 @@ import 'package:grocery_shopping_app/features/admin/presentation/screens/shipper
 import 'package:grocery_shopping_app/features/admin/presentation/screens/order_management/order_management_screen.dart';
 import 'package:grocery_shopping_app/features/admin/presentation/screens/delivery_management/delivery_management_screen.dart';
 import 'package:grocery_shopping_app/features/admin/presentation/screens/settings/settings_screen.dart';
-import 'package:grocery_shopping_app/features/admin/domain/repositories/user_repository.dart';
-import 'package:grocery_shopping_app/features/admin/data/repositories/api_user_repository_impl.dart';
-import 'package:grocery_shopping_app/features/admin/domain/repositories/store_repository.dart';
-import 'package:grocery_shopping_app/features/admin/data/repositories/api_store_repository_impl.dart';
 import 'package:grocery_shopping_app/features/orders/data/order_service.dart';
 import 'package:grocery_shopping_app/features/orders/data/order_model.dart';
 import 'package:grocery_shopping_app/core/utils/logger.dart';
@@ -32,9 +29,7 @@ class AdminDashboardScreen extends StatefulWidget {
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   int _currentIndex = 0;
   late PageController _pageController;
-  
-  final UserRepository _userRepository = ApiUserRepositoryImpl();
-  final StoreRepository _storeRepository = ApiStoreRepositoryImpl();
+
   final _currencyFormat = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ');
 
   final List<Map<String, dynamic>> _navItems = [
@@ -369,7 +364,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         borderRadius: BorderRadius.circular(28),
         boxShadow: [
           BoxShadow(
-            color: Colors.indigo.withOpacity(0.3),
+            color: Colors.indigo.withValues(alpha: 0.3),
             blurRadius: 15,
             offset: const Offset(0, 8),
           ),
@@ -388,13 +383,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 const SizedBox(height: 8),
                 Text(
                   l.translate('greeting_welcome_back'),
-                  style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.9)),
+                  style: TextStyle(fontSize: 14, color: Colors.white.withValues(alpha: 0.9)),
                 ),
                 const SizedBox(height: 16),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
