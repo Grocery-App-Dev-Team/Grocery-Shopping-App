@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../features/store/data/store_service.dart';
 import '../../../features/store/data/store_model.dart';
@@ -7,8 +9,11 @@ import '../../../features/products/data/product_service.dart';
 import '../../../features/products/data/product_model.dart';
 import '../../../features/products/data/category_service.dart';
 import '../../../features/products/data/category_model.dart';
+import '../../../features/products/data/unit_service.dart';
+import '../../../features/products/data/unit_model.dart';
 import '../../../features/review/data/review_service.dart';
 import '../../../features/review/data/review_model.dart';
+import '../services/store_realtime_service.dart';
 
 // ============ DASHBOARD BLOC ============
 abstract class StoreDashboardEvent {}
@@ -24,8 +29,12 @@ class UpdateStoreProfileEvent extends StoreDashboardEvent {
   final int storeId;
   final String storeName;
   final String address;
+  final String? imageUrl;
   UpdateStoreProfileEvent(
-      {required this.storeId, required this.storeName, required this.address});
+      {required this.storeId,
+      required this.storeName,
+      required this.address,
+      this.imageUrl});
 }
 
 abstract class StoreDashboardState {}
@@ -36,7 +45,9 @@ class StoreDashboardLoading extends StoreDashboardState {}
 
 class StoreDashboardLoaded extends StoreDashboardState {
   final StoreModel store;
-  StoreDashboardLoaded(this.store);
+  final bool isStatusUpdating;
+
+  StoreDashboardLoaded(this.store, {this.isStatusUpdating = false});
 }
 
 class StoreDashboardError extends StoreDashboardState {
@@ -67,11 +78,23 @@ class StoreDashboardBloc
 
   Future<void> _onToggleStatus(
       ToggleStoreStatus event, Emitter<StoreDashboardState> emit) async {
+    final current = state;
+    if (current is! StoreDashboardLoaded) return;
+
+    final previousStore = current.store;
+    final toggledStore = previousStore.copyWith(
+      isOpen: !(previousStore.isOpen ?? false),
+    );
+
+    // Optimistic update to avoid full-screen loading flicker.
+    emit(StoreDashboardLoaded(toggledStore, isStatusUpdating: true));
+
     try {
       await _storeService.toggleStoreStatus(event.storeId);
-      add(LoadStoreDashboard());
+      emit(StoreDashboardLoaded(toggledStore));
     } catch (e) {
-      emit(StoreDashboardError(e.toString()));
+      // Roll back when request fails while keeping current screen stable.
+      emit(StoreDashboardLoaded(previousStore));
     }
   }
 
@@ -81,7 +104,9 @@ class StoreDashboardBloc
       await _storeService.updateStoreProfile(
           event.storeId,
           UpdateStoreProfileRequest(
-              storeName: event.storeName, address: event.address));
+            storeName: event.storeName,
+            address: event.address,
+            imageUrl: event.imageUrl));
       add(LoadStoreDashboard());
     } catch (e) {
       emit(StoreDashboardError(e.toString()));
@@ -99,6 +124,8 @@ class UpdateOrderStatus extends StoreOrdersEvent {
   final String status;
   UpdateOrderStatus(this.orderId, this.status);
 }
+
+class _RealtimeOrdersChanged extends StoreOrdersEvent {}
 
 abstract class StoreOrdersState {}
 
@@ -118,10 +145,25 @@ class StoreOrdersError extends StoreOrdersState {
 
 class StoreOrdersBloc extends Bloc<StoreOrdersEvent, StoreOrdersState> {
   final OrderService _orderService;
+  final StoreRealtimeService _realtimeService = StoreRealtimeService();
+  StreamSubscription<StoreRealtimeEvent>? _realtimeSubscription;
+
   StoreOrdersBloc(this._orderService) : super(StoreOrdersInitial()) {
     on<LoadStoreOrders>(_onLoad);
     on<UpdateOrderStatus>(_onUpdateStatus);
+    on<_RealtimeOrdersChanged>(_onRealtimeOrdersChanged);
+
+    _realtimeSubscription = _realtimeService.events.listen((event) {
+      if (event.type == StoreRealtimeEventType.newOrder ||
+          event.type == StoreRealtimeEventType.orderAccepted ||
+          event.type == StoreRealtimeEventType.orderStatusChanged) {
+        add(_RealtimeOrdersChanged());
+      }
+    });
+
+    _realtimeService.connect();
   }
+
   Future<void> _onLoad(
       LoadStoreOrders event, Emitter<StoreOrdersState> emit) async {
     emit(StoreOrdersLoading());
@@ -142,6 +184,20 @@ class StoreOrdersBloc extends Bloc<StoreOrdersEvent, StoreOrdersState> {
     } catch (e) {
       emit(StoreOrdersError(e.toString()));
     }
+  }
+
+  Future<void> _onRealtimeOrdersChanged(
+      _RealtimeOrdersChanged event, Emitter<StoreOrdersState> emit) async {
+    // Avoid triggering duplicate fetches while one request is in-flight.
+    if (state is StoreOrdersLoading) return;
+    add(LoadStoreOrders());
+  }
+
+  @override
+  Future<void> close() async {
+    await _realtimeSubscription?.cancel();
+    _realtimeService.dispose();
+    return super.close();
   }
 }
 
@@ -211,8 +267,8 @@ class StoreProductsBloc extends Bloc<StoreProductsEvent, StoreProductsState> {
         products =
             await _productService.getProductsByStore(_lastStoreId.toString());
       } else {
-        // Fallback: load all (should not happen in store app)
-        products = await _productService.getProducts();
+        emit(StoreProductsError('Không tìm thấy thông tin cửa hàng hiện tại'));
+        return;
       }
       emit(StoreProductsLoaded(products));
     } catch (e) {
@@ -275,8 +331,7 @@ class StoreCategoriesError extends StoreCategoriesState {
 class StoreCategoriesBloc
     extends Bloc<StoreCategoriesEvent, StoreCategoriesState> {
   final CategoryService _categoryService;
-  StoreCategoriesBloc(this._categoryService)
-      : super(StoreCategoriesInitial()) {
+  StoreCategoriesBloc(this._categoryService) : super(StoreCategoriesInitial()) {
     on<LoadCategories>(_onLoad);
   }
   Future<void> _onLoad(
@@ -334,6 +389,89 @@ class StoreReviewsBloc extends Bloc<StoreReviewsEvent, StoreReviewsState> {
           rating: results[1] as StoreRatingModel?));
     } catch (e) {
       emit(StoreReviewsError(e.toString()));
+    }
+  }
+}
+
+// ============ UNIT BLOC ============
+
+abstract class UnitEvent {}
+
+class LoadUnits extends UnitEvent {}
+
+class LoadUnitCategories extends UnitEvent {}
+
+class LoadUnitsByCategory extends UnitEvent {
+  final int categoryId;
+  LoadUnitsByCategory(this.categoryId);
+}
+
+abstract class UnitState {}
+
+class UnitInitial extends UnitState {}
+
+class UnitLoading extends UnitState {}
+
+class UnitsLoaded extends UnitState {
+  final List<Unit> units;
+  UnitsLoaded(this.units);
+}
+
+class UnitCategoriesLoaded extends UnitState {
+  final List<UnitCategory> categories;
+  UnitCategoriesLoaded(this.categories);
+}
+
+class UnitsByCategoryLoaded extends UnitState {
+  final Map<UnitCategory, List<Unit>> organizedUnits;
+  UnitsByCategoryLoaded(this.organizedUnits);
+}
+
+class UnitError extends UnitState {
+  final String message;
+  UnitError(this.message);
+}
+
+class UnitBloc extends Bloc<UnitEvent, UnitState> {
+  final UnitService _unitService;
+
+  UnitBloc({UnitService? unitService})
+      : _unitService = unitService ?? UnitService(),
+        super(UnitInitial()) {
+    on<LoadUnits>(_onLoadUnits);
+    on<LoadUnitCategories>(_onLoadUnitCategories);
+    on<LoadUnitsByCategory>(_onLoadUnitsByCategory);
+  }
+
+  Future<void> _onLoadUnits(LoadUnits event, Emitter<UnitState> emit) async {
+    emit(UnitLoading());
+    try {
+      final units = await _unitService.getAllUnits();
+      emit(UnitsLoaded(units));
+    } catch (e) {
+      emit(UnitError('Failed to load units: $e'));
+    }
+  }
+
+  Future<void> _onLoadUnitCategories(
+      LoadUnitCategories event, Emitter<UnitState> emit) async {
+    emit(UnitLoading());
+    try {
+      final categories = await _unitService.getUnitCategories();
+      emit(UnitCategoriesLoaded(categories));
+    } catch (e) {
+      emit(UnitError('Failed to load categories: $e'));
+    }
+  }
+
+  Future<void> _onLoadUnitsByCategory(
+      LoadUnitsByCategory event, Emitter<UnitState> emit) async {
+    emit(UnitLoading());
+    try {
+      final organized = await _unitService.getUnitsOrganizedByCategory();
+      emit(UnitsByCategoryLoaded(organized));
+    } catch (e) {
+      emit(UnitError('Failed to load units: $e'));
     }
   }
 }

@@ -27,7 +27,6 @@ class CategoryService {
       }
       return [];
     } catch (e) {
-      debugPrint('getCategories failed: $e');
       return [];
     }
   }

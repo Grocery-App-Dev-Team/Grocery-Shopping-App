@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/api/api_routes.dart';
 import 'review_model.dart';
@@ -25,7 +24,6 @@ class ReviewService {
       }
       return [];
     } catch (e) {
-      debugPrint('getStoreReviews failed: $e');
       return [];
     }
   }
@@ -42,7 +40,6 @@ class ReviewService {
           ? data
           : Map<String, dynamic>.from(data as Map));
     } catch (e) {
-      debugPrint('getStoreRating failed: $e');
       return null;
     }
   }

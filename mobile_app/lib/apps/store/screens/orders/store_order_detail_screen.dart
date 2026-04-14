@@ -3,12 +3,33 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/store_theme.dart';
 import '../../bloc/store_blocs.dart';
 import '../../../../features/orders/data/order_model.dart';
+import '../../utils/store_localizations.dart';
 
-class StoreOrderDetailScreen extends StatelessWidget {
+class StoreOrderDetailScreen extends StatefulWidget {
   final OrderModel order;
   const StoreOrderDetailScreen({super.key, required this.order});
 
-  Color _statusColor() {
+  @override
+  State<StoreOrderDetailScreen> createState() => _StoreOrderDetailScreenState();
+}
+
+class _StoreOrderDetailScreenState extends State<StoreOrderDetailScreen> {
+  @override
+  void initState() {
+    super.initState();
+    context.read<StoreOrdersBloc>().add(LoadStoreOrders());
+  }
+
+  OrderModel _resolveLatestOrder(StoreOrdersState state) {
+    if (state is StoreOrdersLoaded) {
+      for (final item in state.orders) {
+        if (item.id == widget.order.id) return item;
+      }
+    }
+    return widget.order;
+  }
+
+  Color _statusColor(OrderModel order) {
     switch (order.status?.toUpperCase()) {
       case 'PENDING':
         return Colors.orange;
@@ -26,36 +47,36 @@ class StoreOrderDetailScreen extends StatelessWidget {
     }
   }
 
-  String _statusLabel() {
+  String _statusLabel(BuildContext context, OrderModel order) {
     switch (order.status?.toUpperCase()) {
       case 'PENDING':
-        return 'Chờ xác nhận';
+        return context.storeTr('pending_status');
       case 'CONFIRMED':
-        return 'Đã xác nhận';
+        return context.storeTr('confirmed_status');
       case 'PICKING_UP':
-        return 'Đang chuẩn bị';
+        return context.storeTr('preparing_status');
       case 'DELIVERING':
-        return 'Đang giao';
+        return context.storeTr('delivering_status');
       case 'DELIVERED':
-        return 'Hoàn thành';
+        return context.storeTr('completed_status');
       case 'CANCELLED':
-        return 'Đã hủy';
+        return context.storeTr('cancelled_status');
       default:
         return order.status ?? '—';
     }
   }
 
-  String _statusTime() {
+  String _statusTime(BuildContext context, OrderModel order) {
     if (order.createdAt != null) {
       try {
         final dt = DateTime.parse(order.createdAt!);
-        return 'Đặt lúc ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')} - ${dt.day}/${dt.month}/${dt.year}';
+        return '${context.storeTr('ordered_at')} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')} - ${dt.day}/${dt.month}/${dt.year}';
       } catch (_) {}
     }
     return '';
   }
 
-  IconData _statusIcon() {
+  IconData _statusIcon(OrderModel order) {
     switch (order.status?.toUpperCase()) {
       case 'PENDING':
         return Icons.hourglass_empty;
@@ -76,37 +97,43 @@ class StoreOrderDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F6FA),
-      appBar: AppBar(
-        title: Text('Đơn hàng #${order.id}'),
-        backgroundColor: StoreTheme.primaryColor,
-        foregroundColor: Colors.white,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _StatusSection(
-                status: order.status,
-                statusColor: _statusColor(),
-                statusLabel: _statusLabel(),
-                statusTime: _statusTime(),
-                statusIcon: _statusIcon()),
-            const SizedBox(height: 16),
-            _CustomerSection(order: order),
-            const SizedBox(height: 16),
-            if (order.items != null && order.items!.isNotEmpty) ...[
-              _ItemsSection(items: order.items!),
-              const SizedBox(height: 16),
-            ],
-            _PaymentSection(order: order),
-            const SizedBox(height: 24),
-            _ActionButtons(order: order),
-          ],
-        ),
-      ),
+    return BlocBuilder<StoreOrdersBloc, StoreOrdersState>(
+      builder: (context, state) {
+        final order = _resolveLatestOrder(state);
+
+        return Scaffold(
+          backgroundColor: Theme.of(context).colorScheme.surfaceContainerLowest,
+          appBar: AppBar(
+            title: Text('${context.storeTr('order_number')} #${order.id}'),
+            backgroundColor: StoreTheme.primaryColor,
+            foregroundColor: Colors.white,
+          ),
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _StatusSection(
+                    status: order.status,
+                    statusColor: _statusColor(order),
+                    statusLabel: _statusLabel(context, order),
+                    statusTime: _statusTime(context, order),
+                    statusIcon: _statusIcon(order)),
+                const SizedBox(height: 16),
+                _CustomerSection(order: order),
+                const SizedBox(height: 16),
+                if (order.items != null && order.items!.isNotEmpty) ...[
+                  _ItemsSection(items: order.items!),
+                  const SizedBox(height: 16),
+                ],
+                _PaymentSection(order: order),
+                const SizedBox(height: 24),
+                _ActionButtons(order: order),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -129,7 +156,8 @@ class _StatusSection extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-          color: Colors.white, borderRadius: BorderRadius.circular(12)),
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(12)),
       child: Row(
         children: [
           Container(
@@ -169,22 +197,30 @@ class _CustomerSection extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-          color: Colors.white, borderRadius: BorderRadius.circular(12)),
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(12)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.person, color: StoreTheme.primaryColor),
-              SizedBox(width: 8),
-              Text('Thông tin khách hàng',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              const Icon(Icons.person, color: StoreTheme.primaryColor),
+              const SizedBox(width: 8),
+              Text(context.storeTr('customer_info'),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 16)),
             ],
           ),
           const Divider(),
-          _InfoRow(label: 'Tên khách hàng', value: order.customerName ?? '—'),
-          _InfoRow(label: 'Số điện thoại', value: order.customerPhone ?? '—'),
-          _InfoRow(label: 'Địa chỉ giao hàng', value: order.address ?? '—'),
+          _InfoRow(
+              label: context.storeTr('customer_name'),
+              value: order.customerName ?? '—'),
+          _InfoRow(
+              label: context.storeTr('phone_number'),
+              value: order.customerPhone ?? '—'),
+          _InfoRow(
+              label: context.storeTr('delivery_address'),
+              value: order.address ?? '—'),
         ],
       ),
     );
@@ -224,16 +260,18 @@ class _ItemsSection extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-          color: Colors.white, borderRadius: BorderRadius.circular(12)),
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(12)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.shopping_bag, color: StoreTheme.primaryColor),
-              SizedBox(width: 8),
-              Text('Sản phẩm',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              const Icon(Icons.shopping_bag, color: StoreTheme.primaryColor),
+              const SizedBox(width: 8),
+              Text(context.storeTr('items'),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 16)),
             ],
           ),
           const Divider(),
@@ -278,8 +316,13 @@ class _ItemTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(item.productName ?? 'Sản phẩm',
+                Text(item.productName ?? context.storeTr('product'),
                     style: const TextStyle(fontWeight: FontWeight.w500)),
+                if (item.unitName != null && item.unitName!.trim().isNotEmpty)
+                  Text(
+                    item.unitName!,
+                    style: TextStyle(color: Colors.grey[700], fontSize: 12),
+                  ),
                 Text(
                     '${item.quantity} x ${item.unitPrice?.toStringAsFixed(0) ?? 0}đ',
                     style: TextStyle(color: Colors.grey[600], fontSize: 12)),
@@ -308,26 +351,30 @@ class _PaymentSection extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-          color: Colors.white, borderRadius: BorderRadius.circular(12)),
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(12)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.payment, color: StoreTheme.primaryColor),
-              SizedBox(width: 8),
-              Text('Thanh toán',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              const Icon(Icons.payment, color: StoreTheme.primaryColor),
+              const SizedBox(width: 8),
+              Text(context.storeTr('payment'),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 16)),
             ],
           ),
           const Divider(),
-          _PaymentRow(label: 'Tạm tính', value: '${total.toStringAsFixed(0)}đ'),
           _PaymentRow(
-              label: 'Phí vận chuyển',
+              label: context.storeTr('subtotal'),
+              value: '${total.toStringAsFixed(0)}đ'),
+          _PaymentRow(
+              label: context.storeTr('shipping_fee'),
               value: '${shippingFee.toStringAsFixed(0)}đ'),
           const Divider(),
           _PaymentRow(
-              label: 'Tổng cộng',
+              label: context.storeTr('total_amount'),
               value: '${grandTotal.toStringAsFixed(0)}đ',
               isBold: true),
           const SizedBox(height: 8),
@@ -335,7 +382,7 @@ class _PaymentSection extends StatelessWidget {
             children: [
               Icon(Icons.payment, size: 16, color: Colors.grey[600]),
               const SizedBox(width: 8),
-              Text('Thanh toán khi nhận hàng',
+              Text(context.storeTr('cod_payment'),
                   style: TextStyle(color: Colors.grey[600], fontSize: 12)),
             ],
           ),
@@ -396,14 +443,6 @@ class _ActionButtons extends StatelessWidget {
     switch (status) {
       case 'CONFIRMED':
         return 'Đã xác nhận đơn hàng';
-      case 'PICKING_UP':
-        return 'Đơn hàng đang được chuẩn bị';
-      case 'DELIVERING':
-        return 'Đơn hàng đang giao';
-      case 'DELIVERED':
-        return 'Đơn hàng đã hoàn thành';
-      case 'CANCELLED':
-        return 'Đơn hàng đã bị hủy';
       default:
         return 'Cập nhật trạng thái thành công';
     }
@@ -422,8 +461,8 @@ class _ActionButtons extends StatelessWidget {
                   style: OutlinedButton.styleFrom(
                       side: const BorderSide(color: Colors.red),
                       padding: const EdgeInsets.all(16)),
-                  child: const Text('Từ chối',
-                      style: TextStyle(color: Colors.red)),
+                  child: Text(context.storeTr('cancel'),
+                      style: const TextStyle(color: Colors.red)),
                 ),
               ),
               const SizedBox(width: 12),
@@ -433,35 +472,13 @@ class _ActionButtons extends StatelessWidget {
                   style: ElevatedButton.styleFrom(
                       backgroundColor: StoreTheme.primaryColor,
                       padding: const EdgeInsets.all(16)),
-                  child: const Text('Xác nhận'),
+                  child: Text(context.storeTr('confirm')),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 12),
         ],
-        if (order.status == 'CONFIRMED')
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () => _updateStatus(context, 'PICKING_UP'),
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  padding: const EdgeInsets.all(16)),
-              child: const Text('Bắt đầu chuẩn bị'),
-            ),
-          ),
-        if (order.status == 'PICKING_UP')
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () => _updateStatus(context, 'DELIVERING'),
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.purple,
-                  padding: const EdgeInsets.all(16)),
-              child: const Text('Giao cho tài xế'),
-            ),
-          ),
       ],
     );
   }
@@ -470,18 +487,19 @@ class _ActionButtons extends StatelessWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Từ chối đơn'),
-        content: const Text('Bạn có chắc muốn từ chối đơn hàng này?'),
+        title: Text(context.storeTr('cancel_order')),
+        content: Text(context.storeTr('cancel_order_confirm')),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx), child: const Text('Hủy')),
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(context.storeTr('close'))),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () {
               Navigator.pop(ctx);
               _updateStatus(context, 'CANCELLED');
             },
-            child: const Text('Từ chối'),
+            child: Text(context.storeTr('cancel_order')),
           ),
         ],
       ),

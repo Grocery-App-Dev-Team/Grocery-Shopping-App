@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/store_theme.dart';
 import '../../bloc/store_blocs.dart';
 import '../../../../features/review/data/review_model.dart';
+import '../../utils/store_localizations.dart';
 
 class StoreReviewsScreen extends StatefulWidget {
   const StoreReviewsScreen({super.key});
@@ -28,9 +29,9 @@ class _StoreReviewsScreenState extends State<StoreReviewsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F6FA),
+      backgroundColor: Theme.of(context).colorScheme.surfaceContainerLowest,
       appBar: AppBar(
-          title: const Text('Đánh giá'),
+          title: Text(context.storeTr('reviews')),
           backgroundColor: StoreTheme.primaryColor,
           foregroundColor: Colors.white),
       body: BlocBuilder<StoreReviewsBloc, StoreReviewsState>(
@@ -41,7 +42,7 @@ class _StoreReviewsScreenState extends State<StoreReviewsScreen> {
             return Center(child: Text(state.message));
           if (state is StoreReviewsLoaded) {
             if (state.reviews.isEmpty) {
-              return const Center(child: Text('Chưa có đánh giá nào'));
+              return Center(child: Text(context.storeTr('no_reviews')));
             }
             return Column(
               children: [
@@ -50,7 +51,7 @@ class _StoreReviewsScreenState extends State<StoreReviewsScreen> {
                     margin: const EdgeInsets.all(16),
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                        color: Colors.white,
+                      color: Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(12)),
                     child: Row(
                       children: [
@@ -60,10 +61,11 @@ class _StoreReviewsScreenState extends State<StoreReviewsScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                                '${state.rating!.averageRating?.toStringAsFixed(1) ?? '0'} / 5.0',
+                                '${state.rating!.averageRating?.toStringAsFixed(1) ?? '0'}${context.storeTr('rating_out_of')}',
                                 style: const TextStyle(
                                     fontSize: 24, fontWeight: FontWeight.bold)),
-                            Text('${state.rating!.totalReviews ?? 0} đánh giá',
+                            Text(
+                                '${state.rating!.totalReviews ?? 0} ${context.storeTr('total_reviews_count')}',
                                 style: TextStyle(color: Colors.grey[600])),
                           ],
                         ),
@@ -81,7 +83,7 @@ class _StoreReviewsScreenState extends State<StoreReviewsScreen> {
               ],
             );
           }
-          return const Center(child: Text('Chưa có đánh giá nào'));
+          return Center(child: Text(context.storeTr('no_reviews')));
         },
       ),
     );
@@ -98,14 +100,15 @@ class _ReviewCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-          color: Colors.white, borderRadius: BorderRadius.circular(12)),
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(12)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(review.reviewerName ?? 'Khách hàng',
+              Text(review.reviewerName ?? context.storeTr('customer'),
                   style: const TextStyle(fontWeight: FontWeight.bold)),
               Row(
                 children: List.generate(
