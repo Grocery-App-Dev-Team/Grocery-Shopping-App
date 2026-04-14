@@ -49,32 +49,32 @@ class ApiRoutes {
   static const String orders = '/orders';
   static const String myOrders = '/orders/my-orders';
   static const String myStoreOrders = '/orders/my-store-orders';
-// ─── Orders ───────────────────────────────────────────────────────────
   static const String myDeliveries = '/orders/my-deliveries';
   static const String availableOrders = '/orders/available';
   static const String adminOrders = '/orders/admin/all';
-  // Dùng String id theo chuẩn của nhánh main
-  static String orderById(String id) => '/orders/$id';
-  static String updateOrderStatus(String id) => '/orders/$id/status';
-  static String assignShipper(String id) => '/orders/$id/assign-shipper';
+  static String orderById(Object id) => '/orders/$id';
+  static String updateOrderStatus(Object id) => '/orders/$id/status';
+  static String assignShipper(Object id) => '/orders/$id/assign-shipper';
 
-  // ─── Reviews (Từ nhánh store-fe-api-update) ─────────────────────────
+  // ─── Reviews ─────────────────────────────────────────────────────────
   static const String reviews = '/reviews';
   static const String myReviews = '/reviews/my-reviews';
-  static String reviewById(String id) => '/reviews/$id';
-  static String storeReviews(String storeId) => '/reviews/store/$storeId';
-  static String storeRating(String storeId) => '/reviews/store/$storeId/rating';
+  static String reviewById(Object id) => '/reviews/$id';
+  static String storeReviews(Object storeId) => '/reviews/store/$storeId';
+  static String storeRating(Object storeId) => '/reviews/store/$storeId/rating';
 
-  // ─── Monitoring (Từ nhánh main) ───────────────────────────────────────
+  // ─── Monitoring ──────────────────────────────────────────────────────
   static const String stats = '/admin/stats';
   static const String activities = '/admin/activities';
 
-  // ─── Uploads (Gộp từ cả 2 nhánh) ──────────────────────────────────────
+  // ─── Uploads ─────────────────────────────────────────────────────────
   static const String uploadAvatar = '/upload/avatar';
-  static const String uploadProduct = '/upload/product'; // Từ main
-  
-  // Gộp cách gọi hàm (Có thể sửa lại tên hàm tuỳ theo cách bạn đang dùng ở code gọi API)
-  static String uploadProductImage(String productId) => '/upload/product/$productId'; 
-  static String uploadStoreImage(String storeId) => '/upload/store/$storeId'; 
-  static String uploadPOD(String orderId) => '/upload/pod/$orderId'; // Từ store-fe-api-update
+  static const String uploadProduct = '/upload/product';
+  static String uploadProductImage(Object productId) => '/upload/product/$productId';
+  static String uploadStoreImage(Object storeId) => '/upload/store/$storeId';
+  static String uploadPOD(Object orderId) => '/upload/pod/$orderId';
+
+  // Backward-compatible aliases used by admin screens.
+  static String uploadProductWithId(Object id) => uploadProductImage(id);
+  static String uploadStore(Object id) => uploadStoreImage(id);
 }

@@ -61,9 +61,9 @@ class ProductService {
         }
       }
       return [];
-    } on DioException catch (e) {
+    } on DioException {
       return [];
-    } catch (e) {
+    } catch (_) {
       return [];
     }
   }
@@ -86,9 +86,9 @@ class ProductService {
             .toList();
       }
       return [];
-    } on DioException catch (e) {
+    } on DioException {
       return [];
-    } catch (e) {
+    } catch (_) {
       return [];
     }
   }

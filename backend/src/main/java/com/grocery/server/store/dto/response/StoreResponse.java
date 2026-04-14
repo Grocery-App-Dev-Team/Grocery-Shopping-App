@@ -26,7 +26,6 @@ public class StoreResponse {
     private String imageUrl;
     private LocalDateTime createdAt;
     private Boolean isOpen;
-    private String imageUrl;
     
     /**
      * Chuyển từ Store entity sang StoreResponse DTO
@@ -42,7 +41,6 @@ public class StoreResponse {
                 .imageUrl(store.getImageUrl())
                 .createdAt(store.getCreatedAt())
                 .isOpen(store.getIsOpen())
-                .imageUrl(store.getImageUrl())
                 .build();
     }
 }
