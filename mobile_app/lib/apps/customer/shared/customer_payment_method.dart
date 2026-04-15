@@ -1,4 +1,8 @@
-enum CustomerPaymentMethod { cod, momo, vnpay }
+import 'package:flutter/widgets.dart';
+
+import '../utils/customer_l10n.dart';
+
+enum CustomerPaymentMethod { cod, momo }
 
 extension CustomerPaymentMethodX on CustomerPaymentMethod {
   String get label {
@@ -7,8 +11,6 @@ extension CustomerPaymentMethodX on CustomerPaymentMethod {
         return 'Tiền mặt khi nhận hàng';
       case CustomerPaymentMethod.momo:
         return 'Ví MoMo';
-      case CustomerPaymentMethod.vnpay:
-        return 'VNPay';
     }
   }
 
@@ -18,9 +20,18 @@ extension CustomerPaymentMethodX on CustomerPaymentMethod {
         return 'COD';
       case CustomerPaymentMethod.momo:
         return 'MOMO';
-      case CustomerPaymentMethod.vnpay:
-        return 'VNPAY';
+    }
+  }
+
+  String labelOf(BuildContext context) {
+    switch (this) {
+      case CustomerPaymentMethod.cod:
+        return context.tr(
+          vi: 'Tiền mặt khi nhận hàng',
+          en: 'Cash on delivery',
+        );
+      case CustomerPaymentMethod.momo:
+        return context.tr(vi: 'Ví MoMo', en: 'MoMo Wallet');
     }
   }
 }
-

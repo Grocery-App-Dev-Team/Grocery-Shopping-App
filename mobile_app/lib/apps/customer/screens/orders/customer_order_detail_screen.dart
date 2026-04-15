@@ -1,9 +1,17 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
+import '../../shared/customer_payment_method.dart';
+import '../../shared/customer_state_view.dart';
+import '../../services/customer_realtime_service.dart';
+import '../cart/customer_payment_tracking_screen.dart';
 import '../../../../core/format/formatters.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../shared/widgets/snackbar_utils.dart';
+import '../../utils/customer_l10n.dart';
+import 'customer_review_screen.dart';
 
 class CustomerOrderDetailScreen extends StatefulWidget {
   const CustomerOrderDetailScreen({super.key, required this.orderId});
@@ -20,11 +28,76 @@ class _CustomerOrderDetailScreenState extends State<CustomerOrderDetailScreen> {
   String? _error;
   Map<String, dynamic>? _order;
   bool _cancelling = false;
+  bool _retryingPayment = false;
+  bool _hasReviewed = false;
+  final CustomerRealtimeService _realtimeService = CustomerRealtimeService();
+  StreamSubscription<CustomerRealtimeEvent>? _realtimeSubscription;
+  bool _isRealtimeSyncing = false;
 
   @override
   void initState() {
     super.initState();
     _load();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _initRealtimeStreaming();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _realtimeSubscription?.cancel();
+    _realtimeService.dispose();
+    super.dispose();
+  }
+
+  Future<void> _initRealtimeStreaming() async {
+    _realtimeSubscription?.cancel();
+    _realtimeSubscription = _realtimeService.events.listen((event) {
+      if (!_isEventForCurrentOrder(event)) return;
+
+      switch (event.type) {
+        case CustomerRealtimeEventType.orderStatusChanged:
+        case CustomerRealtimeEventType.orderCreated:
+          _refreshOrderFromRealtime();
+          break;
+        case CustomerRealtimeEventType.error:
+        case CustomerRealtimeEventType.connected:
+        case CustomerRealtimeEventType.disconnected:
+          break;
+      }
+    });
+
+    await _realtimeService.connect();
+  }
+
+  bool _isEventForCurrentOrder(CustomerRealtimeEvent event) {
+    final payload = event.payload;
+    if (payload == null) return true;
+
+    final rawOrderId = payload['orderId'] ?? payload['id'];
+    final eventOrderId = rawOrderId is int
+        ? rawOrderId
+        : int.tryParse(rawOrderId?.toString() ?? '');
+    final currentOrderId = int.tryParse(widget.orderId);
+
+    if (eventOrderId == null || currentOrderId == null) {
+      return true;
+    }
+
+    return eventOrderId == currentOrderId;
+  }
+
+  Future<void> _refreshOrderFromRealtime() async {
+    if (!mounted || _isRealtimeSyncing || _loading) return;
+
+    _isRealtimeSyncing = true;
+    try {
+      await _load();
+    } finally {
+      _isRealtimeSyncing = false;
+    }
   }
 
   Future<void> _load() async {
@@ -41,11 +114,28 @@ class _CustomerOrderDetailScreenState extends State<CustomerOrderDetailScreen> {
       } else {
         _order = null;
       }
+
+      final orderIdInt = int.tryParse(widget.orderId);
+      if (orderIdInt != null) {
+        await _checkIfReviewed(orderIdInt);
+      }
     } catch (_) {
-      _error = 'Không thể tải chi tiết đơn hàng';
+      _error = context.tr(
+        vi: 'Không thể tải chi tiết đơn hàng',
+        en: 'Unable to load order details',
+      );
       _order = null;
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _checkIfReviewed(int orderId) async {
+    try {
+      await ApiClient.dio.get('/reviews/order/$orderId');
+      if (mounted) _hasReviewed = true;
+    } catch (_) {
+      if (mounted) _hasReviewed = false;
     }
   }
 
@@ -54,6 +144,100 @@ class _CustomerOrderDetailScreenState extends State<CustomerOrderDetailScreen> {
 
   bool _canCancel(String status) =>
       status == 'PENDING' || status == 'CONFIRMED';
+
+  Future<Map<String, dynamic>> _initiatePayment({
+    required int orderId,
+    required CustomerPaymentMethod method,
+  }) async {
+    final res = await ApiClient.dio.post(
+      '/payments/initiate',
+      data: {
+        'orderId': orderId,
+        'paymentMethod': method.backendValue,
+      },
+    );
+
+    final body = res.data;
+    if (body is Map) {
+      return {
+        'paymentId': body['paymentId'],
+        'redirectUrl': body['redirectUrl'] ?? body['redirectUrl'] ?? '',
+      };
+    }
+    return const {'paymentId': null, 'redirectUrl': ''};
+  }
+
+  Future<void> _onRetryPaymentPressed(String status) async {
+    if (_order == null || _retryingPayment) return;
+    final orderId = int.tryParse(widget.orderId);
+    if (orderId == null) return;
+
+    final selected = await showModalBottomSheet<String>(
+      context: context,
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                title: Text(context.tr(
+                    vi: 'Thanh toán lại với MoMo', en: 'Retry with MoMo')),
+                subtitle: Text(CustomerPaymentMethod.momo.labelOf(context)),
+                onTap: () => Navigator.of(context).pop('MOMO'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (selected is! String) return;
+    final method = CustomerPaymentMethod.momo;
+    setState(() {
+      _retryingPayment = true;
+    });
+    try {
+      final result = await _initiatePayment(orderId: orderId, method: method);
+      final paymentId = result['paymentId'];
+      final redirectUrl = (result['redirectUrl'] ?? '').toString();
+      if (paymentId != null && redirectUrl.isNotEmpty) {
+        if (!mounted) return;
+        Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => CustomerPaymentTrackingScreen(
+            orderId: orderId,
+            paymentId: paymentId,
+            redirectUrl: redirectUrl,
+            paymentMethod: method,
+          ),
+        ));
+      } else {
+        SnackBarUtils.showError(
+          context: context,
+          message: context.tr(
+            vi: 'Không thể khởi tạo lại thanh toán. Vui lòng thử lại.',
+            en: 'Unable to restart payment. Please try again.',
+          ),
+        );
+      }
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      SnackBarUtils.showError(
+        context: context,
+        message: (data is Map && data['message'] != null)
+            ? data['message'].toString()
+            : context.tr(
+                vi: 'Không thể kết nối đến máy chủ',
+                en: 'Cannot connect to server'),
+      );
+    } catch (e) {
+      SnackBarUtils.showError(
+        context: context,
+        message: e.toString().replaceFirst('Exception: ', ''),
+      );
+    } finally {
+      if (mounted) setState(() => _retryingPayment = false);
+    }
+  }
 
   num _asNum(dynamic v) {
     if (v is num) return v;
@@ -66,23 +250,30 @@ class _CustomerOrderDetailScreenState extends State<CustomerOrderDetailScreen> {
     final status = _statusOf(_order!);
     if (!_canCancel(status)) return;
 
-    final reasonController = TextEditingController(text: 'Khách hàng hủy đơn');
+    final reasonController = TextEditingController(
+      text: context.tr(vi: 'Khách hàng hủy đơn', en: 'Customer canceled order'),
+    );
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Hủy đơn hàng'),
+          title: Text(context.tr(vi: 'Hủy đơn hàng', en: 'Cancel order')),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('Vui lòng nhập lý do hủy đơn:'),
+              Text(context.tr(
+                  vi: 'Vui lòng nhập lý do hủy đơn:',
+                  en: 'Please enter the cancel reason:')),
               const SizedBox(height: 12),
               TextField(
                 controller: reasonController,
                 maxLines: 2,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   border: OutlineInputBorder(),
-                  hintText: 'Ví dụ: Đổi địa chỉ, đặt nhầm...',
+                  hintText: context.tr(
+                    vi: 'Ví dụ: Đổi địa chỉ, đặt nhầm...',
+                    en: 'Example: Wrong address, accidental order...',
+                  ),
                 ),
               ),
             ],
@@ -90,11 +281,11 @@ class _CustomerOrderDetailScreenState extends State<CustomerOrderDetailScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Không'),
+              child: Text(context.tr(vi: 'Không', en: 'No')),
             ),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Hủy đơn'),
+              child: Text(context.tr(vi: 'Hủy đơn', en: 'Cancel order')),
             ),
           ],
         );
@@ -106,7 +297,9 @@ class _CustomerOrderDetailScreenState extends State<CustomerOrderDetailScreen> {
     if (reason.isEmpty) {
       SnackBarUtils.showWarning(
         context: context,
-        message: 'Vui lòng nhập lý do hủy đơn',
+        message: context.tr(
+            vi: 'Vui lòng nhập lý do hủy đơn',
+            en: 'Please enter cancel reason'),
       );
       return;
     }
@@ -128,14 +321,15 @@ class _CustomerOrderDetailScreenState extends State<CustomerOrderDetailScreen> {
           setState(() {});
           SnackBarUtils.showSuccess(
             context: context,
-            message: 'Đã hủy đơn hàng',
+            message: context.tr(vi: 'Đã hủy đơn hàng', en: 'Order canceled'),
           );
         }
       } else {
         throw Exception(
           (data is Map && data['message'] != null)
               ? data['message'].toString()
-              : 'Không thể hủy đơn hàng',
+              : context.tr(
+                  vi: 'Không thể hủy đơn hàng', en: 'Unable to cancel order'),
         );
       }
     } on DioException catch (e) {
@@ -144,7 +338,9 @@ class _CustomerOrderDetailScreenState extends State<CustomerOrderDetailScreen> {
         context: context,
         message: (data is Map && data['message'] != null)
             ? data['message'].toString()
-            : 'Không thể kết nối đến máy chủ',
+            : context.tr(
+                vi: 'Không thể kết nối đến máy chủ',
+                en: 'Cannot connect to server'),
       );
     } catch (e) {
       SnackBarUtils.showError(
@@ -158,25 +354,50 @@ class _CustomerOrderDetailScreenState extends State<CustomerOrderDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     if (_loading) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Chi tiết đơn')),
-        body: const Center(child: CircularProgressIndicator()),
+        appBar: AppBar(
+            title: Text(context.tr(vi: 'Chi tiết đơn', en: 'Order details'))),
+        body: CustomerStateView.loading(
+          compact: true,
+          title: context.tr(vi: 'Đang tải dữ liệu', en: 'Loading data'),
+          message: context.tr(
+              vi: 'Vui lòng chờ trong giây lát...',
+              en: 'Please wait a moment...'),
+        ),
       );
     }
 
     if (_error != null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Chi tiết đơn')),
-        body: Center(child: Text(_error!)),
+        appBar: AppBar(
+            title: Text(context.tr(vi: 'Chi tiết đơn', en: 'Order details'))),
+        body: CustomerStateView.error(
+          compact: true,
+          message: _error!,
+          onAction: _load,
+        ),
       );
     }
 
     final order = _order;
     if (order == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Chi tiết đơn')),
-        body: const Center(child: Text('Không có dữ liệu đơn hàng')),
+        appBar: AppBar(
+            title: Text(context.tr(vi: 'Chi tiết đơn', en: 'Order details'))),
+        body: CustomerStateView.empty(
+          compact: true,
+          title:
+              context.tr(vi: 'Không có dữ liệu đơn hàng', en: 'No order data'),
+          message: context.tr(
+            vi: 'Đơn hàng có thể đã bị xóa hoặc chưa được đồng bộ.',
+            en: 'This order may be deleted or not synced yet.',
+          ),
+          actionLabel: context.tr(vi: 'Tải lại', en: 'Reload'),
+          onAction: _load,
+        ),
       );
     }
 
@@ -191,7 +412,10 @@ class _CustomerOrderDetailScreenState extends State<CustomerOrderDetailScreen> {
     final cancelReason = (order['cancelReason'] ?? '').toString();
     final rawItems = order['items'];
     final items = (rawItems is List)
-        ? rawItems.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList()
+        ? rawItems
+            .whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList()
         : const <Map<String, dynamic>>[];
 
     return Scaffold(
@@ -201,12 +425,12 @@ class _CustomerOrderDetailScreenState extends State<CustomerOrderDetailScreen> {
           IconButton(
             onPressed: _load,
             icon: const Icon(Icons.refresh),
-            tooltip: 'Tải lại',
+            tooltip: context.tr(vi: 'Tải lại', en: 'Reload'),
           ),
         ],
       ),
       body: Container(
-        color: const Color(0xFFF6F8FB),
+        color: scheme.surfaceContainerLowest,
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
@@ -223,7 +447,9 @@ class _CustomerOrderDetailScreenState extends State<CustomerOrderDetailScreen> {
                       children: [
                         Expanded(
                           child: Text(
-                            storeName.isEmpty ? 'Cửa hàng' : storeName,
+                            storeName.isEmpty
+                                ? context.tr(vi: 'Cửa hàng', en: 'Store')
+                                : storeName,
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
@@ -237,13 +463,14 @@ class _CustomerOrderDetailScreenState extends State<CustomerOrderDetailScreen> {
                       const SizedBox(height: 8),
                       Text(
                         createdAt,
-                        style: const TextStyle(color: Colors.black54),
+                        style: TextStyle(color: scheme.onSurfaceVariant),
                       ),
                     ],
                     if (deliveryAddress.isNotEmpty) ...[
                       const SizedBox(height: 10),
-                      const Text(
-                        'Địa chỉ giao hàng',
+                      Text(
+                        context.tr(
+                            vi: 'Địa chỉ giao hàng', en: 'Delivery address'),
                         style: TextStyle(fontWeight: FontWeight.w700),
                       ),
                       const SizedBox(height: 6),
@@ -251,8 +478,8 @@ class _CustomerOrderDetailScreenState extends State<CustomerOrderDetailScreen> {
                     ],
                     if (status == 'CANCELLED' && cancelReason.isNotEmpty) ...[
                       const SizedBox(height: 10),
-                      const Text(
-                        'Lý do hủy',
+                      Text(
+                        context.tr(vi: 'Lý do hủy', en: 'Cancel reason'),
                         style: TextStyle(fontWeight: FontWeight.w700),
                       ),
                       const SizedBox(height: 6),
@@ -272,13 +499,15 @@ class _CustomerOrderDetailScreenState extends State<CustomerOrderDetailScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Sản phẩm',
+                    Text(
+                      context.tr(vi: 'Sản phẩm', en: 'Products'),
                       style: TextStyle(fontWeight: FontWeight.w700),
                     ),
                     const SizedBox(height: 10),
                     if (items.isEmpty)
-                      const Text('Không có danh sách sản phẩm')
+                      Text(context.tr(
+                          vi: 'Không có danh sách sản phẩm',
+                          en: 'No product list'))
                     else
                       ...items.map((it) {
                         final name = (it['productName'] ?? '').toString();
@@ -296,7 +525,10 @@ class _CustomerOrderDetailScreenState extends State<CustomerOrderDetailScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      name.isEmpty ? 'Sản phẩm' : name,
+                                      name.isEmpty
+                                          ? context.tr(
+                                              vi: 'Sản phẩm', en: 'Product')
+                                          : name,
                                       style: const TextStyle(
                                         fontWeight: FontWeight.w600,
                                       ),
@@ -304,16 +536,16 @@ class _CustomerOrderDetailScreenState extends State<CustomerOrderDetailScreen> {
                                     const SizedBox(height: 2),
                                     Text(
                                       unitName,
-                                      style: const TextStyle(
-                                        color: Colors.black54,
+                                      style: TextStyle(
+                                        color: scheme.onSurfaceVariant,
                                         fontSize: 12,
                                       ),
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
                                       'x$qty · ${formatVnd(unitPrice)}',
-                                      style: const TextStyle(
-                                        color: Colors.black54,
+                                      style: TextStyle(
+                                        color: scheme.onSurfaceVariant,
                                         fontSize: 12,
                                       ),
                                     ),
@@ -344,17 +576,24 @@ class _CustomerOrderDetailScreenState extends State<CustomerOrderDetailScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Thanh toán',
+                    Text(
+                      context.tr(vi: 'Thanh toán', en: 'Payment'),
                       style: TextStyle(fontWeight: FontWeight.w700),
                     ),
                     const SizedBox(height: 10),
-                    _SummaryRow(label: 'Tiền hàng', value: formatVnd(totalAmount)),
+                    _SummaryRow(
+                      label: context.tr(vi: 'Tiền hàng', en: 'Subtotal'),
+                      value: formatVnd(totalAmount),
+                    ),
                     const SizedBox(height: 6),
-                    _SummaryRow(label: 'Phí vận chuyển', value: formatVnd(shippingFee)),
+                    _SummaryRow(
+                      label:
+                          context.tr(vi: 'Phí vận chuyển', en: 'Shipping fee'),
+                      value: formatVnd(shippingFee),
+                    ),
                     const Divider(height: 18),
                     _SummaryRow(
-                      label: 'Tổng',
+                      label: context.tr(vi: 'Tổng', en: 'Total'),
                       value: formatVnd(grandTotal),
                       isTotal: true,
                     ),
@@ -364,21 +603,51 @@ class _CustomerOrderDetailScreenState extends State<CustomerOrderDetailScreen> {
             ),
             const SizedBox(height: 16),
             if (_canCancel(status))
+              Column(
+                children: [
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _cancelling ? null : _cancelOrder,
+                      icon: _cancelling
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.cancel),
+                      label:
+                          Text(context.tr(vi: 'Hủy đơn', en: 'Cancel order')),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: scheme.error,
+                        side: BorderSide(color: scheme.error),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                ],
+              ),
+            if (status == 'PENDING')
               SizedBox(
                 width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: _cancelling ? null : _cancelOrder,
-                  icon: _cancelling
+                child: FilledButton.icon(
+                  onPressed: _retryingPayment
+                      ? null
+                      : () => _onRetryPaymentPressed(status),
+                  icon: _retryingPayment
                       ? const SizedBox(
                           width: 16,
                           height: 16,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Icon(Icons.cancel),
-                  label: const Text('Hủy đơn'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.redAccent,
-                    side: const BorderSide(color: Colors.redAccent),
+                      : const Icon(Icons.replay),
+                  label: Text(
+                      context.tr(vi: 'Thanh toán lại', en: 'Retry payment')),
+                  style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
@@ -386,10 +655,75 @@ class _CustomerOrderDetailScreenState extends State<CustomerOrderDetailScreen> {
                   ),
                 ),
               ),
+            if (status == 'DELIVERED' && !_hasReviewed)
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () => _openReviewScreen(),
+                  icon: const Icon(Icons.star),
+                  label: Text(context.tr(vi: 'Đánh giá', en: 'Review')),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.amber,
+                    foregroundColor: Colors.black87,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+              ),
+            if (status == 'DELIVERED' && _hasReviewed)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.green.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(14),
+                  border:
+                      Border.all(color: Colors.green.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.check_circle,
+                        color: Colors.green, size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      context.tr(vi: 'Đã đánh giá', en: 'Reviewed'),
+                      style: const TextStyle(
+                        color: Colors.green,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
           ],
         ),
       ),
     );
+  }
+
+  void _openReviewScreen() {
+    if (_order == null) return;
+    final orderIdInt = int.tryParse(widget.orderId);
+    if (orderIdInt == null) return;
+    final storeName = (_order!['storeName'] ?? '').toString();
+
+    Navigator.of(context)
+        .push(
+      MaterialPageRoute(
+        builder: (_) => CustomerReviewScreen(
+          orderId: orderIdInt,
+          storeName: storeName,
+        ),
+      ),
+    )
+        .then((reviewed) {
+      if (reviewed == true && mounted) {
+        setState(() => _hasReviewed = true);
+      }
+    });
   }
 }
 
@@ -398,44 +732,58 @@ class _StatusChip extends StatelessWidget {
 
   const _StatusChip({required this.status});
 
-  @override
-  Widget build(BuildContext context) {
-    Color color;
+  String _label(BuildContext context) {
+    switch (status) {
+      case 'PENDING':
+        return context.tr(vi: 'Chờ xác nhận', en: 'Pending');
+      case 'CONFIRMED':
+        return context.tr(vi: 'Đã xác nhận', en: 'Confirmed');
+      case 'PICKING_UP':
+        return context.tr(vi: 'Đang lấy hàng', en: 'Picking up');
+      case 'DELIVERING':
+        return context.tr(vi: 'Đang giao', en: 'Delivering');
+      case 'DELIVERED':
+        return context.tr(vi: 'Đã giao', en: 'Delivered');
+      case 'CANCELLED':
+        return context.tr(vi: 'Đã hủy', en: 'Cancelled');
+      default:
+        return status;
+    }
+  }
+
+  Color _color() {
     switch (status) {
       case 'DELIVERED':
-        color = Colors.green;
-        break;
+        return Colors.green;
       case 'DELIVERING':
-        color = Colors.orange;
-        break;
+        return Colors.orange;
       case 'PICKING_UP':
-        color = Colors.deepOrange;
-        break;
+        return Colors.deepOrange;
       case 'CONFIRMED':
-        color = Colors.blue;
-        break;
+        return Colors.blue;
       case 'CANCELLED':
-        color = Colors.red;
-        break;
-      case 'PENDING':
-        color = Colors.grey;
-        break;
+        return Colors.red;
       default:
-        color = Colors.grey;
+        return Colors.grey;
     }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _color();
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
-        status,
+        _label(context),
         style: TextStyle(
-          fontSize: 10,
+          fontSize: 11,
           color: color,
-          fontWeight: FontWeight.w700,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );
@@ -455,16 +803,20 @@ class _SummaryRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     final style = TextStyle(
       fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
-      color: isTotal ? Colors.black : Colors.black87,
+      color: isTotal ? scheme.onSurface : scheme.onSurface,
     );
     return Row(
       children: [
         Expanded(child: Text(label, style: style)),
         Text(
           value,
-          style: style.copyWith(color: isTotal ? Colors.red : Colors.black87),
+          style: style.copyWith(
+            color: isTotal ? scheme.error : scheme.onSurface,
+          ),
         ),
       ],
     );

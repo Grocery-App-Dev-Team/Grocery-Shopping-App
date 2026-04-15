@@ -3,6 +3,7 @@
 import '../../../../core/auth/auth_session.dart';
 import '../../../../core/location/province_api.dart';
 import '../../services/province_api_v2.dart';
+import '../../utils/customer_l10n.dart';
 
 class RecipientAddressResult {
   final String address;
@@ -197,14 +198,28 @@ class _RecipientAddressFormScreenState
         (_districts.isNotEmpty && _selectedDistrict == null) ||
         _selectedWard == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng chọn đầy đủ địa chỉ')),
+        SnackBar(
+          content: Text(
+            context.tr(
+              vi: 'Vui lòng chọn đầy đủ địa chỉ',
+              en: 'Please select full address details',
+            ),
+          ),
+        ),
       );
       return;
     }
     final house = _houseController.text.trim();
     if (house.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng nhập số nhà, tên đường')),
+        SnackBar(
+          content: Text(
+            context.tr(
+              vi: 'Vui lòng nhập số nhà, tên đường',
+              en: 'Please enter house number and street',
+            ),
+          ),
+        ),
       );
       return;
     }
@@ -239,15 +254,18 @@ class _RecipientAddressFormScreenState
   @override
   Widget build(BuildContext context) {
     final name = (AuthSession.fullName == null || AuthSession.fullName!.isEmpty)
-        ? 'Khách hàng'
+      ? context.tr(vi: 'Khách hàng', en: 'Customer')
         : AuthSession.fullName!;
     final phone =
         (AuthSession.phoneNumber == null || AuthSession.phoneNumber!.isEmpty)
-        ? 'Chưa có số điện thoại'
+        ? context.tr(vi: 'Chưa có số điện thoại', en: 'No phone number')
         : AuthSession.phoneNumber!;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Địa chỉ nhận hàng'), centerTitle: true),
+      appBar: AppBar(
+        title: Text(context.tr(vi: 'Địa chỉ nhận hàng', en: 'Delivery address')),
+        centerTitle: true,
+      ),
       body: SafeArea(
         child: Column(
           children: [
@@ -256,7 +274,7 @@ class _RecipientAddressFormScreenState
                 padding: const EdgeInsets.all(16),
                 children: [
                   _buildDropdown(
-                    label: 'Tỉnh/Thành phố',
+                    label: context.tr(vi: 'Tỉnh/Thành phố', en: 'Province/City'),
                     value: _selectedProvince,
                     items: _provinces,
                     onChanged: _loading ? null : _onProvinceChanged,
@@ -264,7 +282,7 @@ class _RecipientAddressFormScreenState
                   if (_districts.isNotEmpty) ...[
                     const SizedBox(height: 12),
                     _buildDropdown(
-                      label: 'Quận/Huyện',
+                      label: context.tr(vi: 'Quận/Huyện', en: 'District'),
                       value: _selectedDistrict,
                       items: _districts,
                       onChanged: _selectedProvince == null ? null : _onDistrictChanged,
@@ -272,7 +290,7 @@ class _RecipientAddressFormScreenState
                   ],
                   const SizedBox(height: 12),
                   _buildDropdown(
-                    label: 'Phường/Xã',
+                    label: context.tr(vi: 'Phường/Xã', en: 'Ward/Commune'),
                     value: _selectedWard,
                     items: _wards,
                     onChanged: (_districts.isNotEmpty ? (_selectedDistrict == null) : (_selectedProvince == null))
@@ -283,7 +301,10 @@ class _RecipientAddressFormScreenState
                   TextField(
                     controller: _houseController,
                     decoration: InputDecoration(
-                      labelText: 'Số nhà, tên đường',
+                      labelText: context.tr(
+                        vi: 'Số nhà, tên đường',
+                        en: 'House number, street',
+                      ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -292,7 +313,10 @@ class _RecipientAddressFormScreenState
                   const SizedBox(height: 16),
                   if (!_otherReceiver)
                     Text(
-                      'Người nhận: $name - $phone',
+                      context.tr(
+                        vi: 'Người nhận: $name - $phone',
+                        en: 'Receiver: $name - $phone',
+                      ),
                       style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -317,8 +341,13 @@ class _RecipientAddressFormScreenState
                           }
                         },
                       ),
-                      const Expanded(
-                        child: Text('Gọi người nhận khác nhận hàng (nếu có)'),
+                      Expanded(
+                        child: Text(
+                          context.tr(
+                            vi: 'Gọi người nhận khác nhận hàng (nếu có)',
+                            en: 'Call another receiver to take delivery (optional)',
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -335,7 +364,10 @@ class _RecipientAddressFormScreenState
                         children: [
                           Expanded(
                             child: Text(
-                              'NgÆ°á»i nháº­n: ${_formatReceiverName()} - $_otherReceiverPhone',
+                              context.tr(
+                                vi: 'Người nhận: ${_formatReceiverName()} - $_otherReceiverPhone',
+                                en: 'Receiver: ${_formatReceiverName()} - $_otherReceiverPhone',
+                              ),
                               style: const TextStyle(
                                 fontWeight: FontWeight.w600,
                               ),
@@ -358,7 +390,7 @@ class _RecipientAddressFormScreenState
                 height: 48,
                 child: ElevatedButton(
                   onPressed: _onComplete,
-                  child: const Text('Hoàn tất'),
+                  child: Text(context.tr(vi: 'Hoàn tất', en: 'Done')),
                 ),
               ),
             ),
@@ -431,9 +463,12 @@ class _RecipientAddressFormScreenState
                 children: [
                   Row(
                     children: [
-                      const Expanded(
+                      Expanded(
                         child: Text(
-                          'Gọi người khác nhận hàng',
+                          context.tr(
+                            vi: 'Gọi người khác nhận hàng',
+                            en: 'Set another receiver',
+                          ),
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
@@ -450,8 +485,8 @@ class _RecipientAddressFormScreenState
                   TextField(
                     controller: phoneController,
                     keyboardType: TextInputType.phone,
-                    decoration: const InputDecoration(
-                      labelText: 'Số điện thoại *',
+                    decoration: InputDecoration(
+                      labelText: context.tr(vi: 'Số điện thoại *', en: 'Phone number *'),
                       border: OutlineInputBorder(),
                     ),
                   ),
@@ -465,13 +500,13 @@ class _RecipientAddressFormScreenState
                       children: [
                         Expanded(
                           child: RadioListTile<String>(
-                            title: const Text('Anh'),
+                            title: Text(context.tr(vi: 'Anh', en: 'Mr.')),
                             value: 'Anh',
                           ),
                         ),
                         Expanded(
                           child: RadioListTile<String>(
-                            title: const Text('Chị'),
+                            title: Text(context.tr(vi: 'Chị', en: 'Ms.')),
                             value: 'Chị',
                           ),
                         ),
@@ -480,8 +515,8 @@ class _RecipientAddressFormScreenState
                   ),
                   TextField(
                     controller: nameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Họ và tên *',
+                    decoration: InputDecoration(
+                      labelText: context.tr(vi: 'Họ và tên *', en: 'Full name *'),
                       border: OutlineInputBorder(),
                     ),
                   ),
@@ -495,9 +530,12 @@ class _RecipientAddressFormScreenState
                         final name = nameController.text.trim();
                         if (!_isValidPhone(phone)) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
+                            SnackBar(
                               content: Text(
-                                'Số điện thoại không hợp lệ (10 số, bắt đầu bằng 0)',
+                                context.tr(
+                                  vi: 'Số điện thoại không hợp lệ (10 số, bắt đầu bằng 0)',
+                                  en: 'Invalid phone number (10 digits, starting with 0)',
+                                ),
                               ),
                             ),
                           );
@@ -505,8 +543,13 @@ class _RecipientAddressFormScreenState
                         }
                         if (name.isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Vui lòng nhập họ và tên'),
+                            SnackBar(
+                              content: Text(
+                                context.tr(
+                                  vi: 'Vui lòng nhập họ và tên',
+                                  en: 'Please enter full name',
+                                ),
+                              ),
                             ),
                           );
                           return;
@@ -519,7 +562,7 @@ class _RecipientAddressFormScreenState
                         });
                         Navigator.pop(context, true);
                       },
-                      child: const Text('Hoàn tất'),
+                      child: Text(context.tr(vi: 'Hoàn tất', en: 'Done')),
                     ),
                   ),
                 ],

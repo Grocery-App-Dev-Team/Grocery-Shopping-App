@@ -15,18 +15,20 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 public class StoreListResponse {
-    
+
     private Long id;
     private String storeName;
     private String address;
     private Boolean isOpen;
     private String ownerName;
     private String imageUrl;
-    
+    private Double averageRating;
+    private Long totalReviews;
+
     /**
      * Chuyển từ Store entity sang StoreListResponse DTO
      */
-    public static StoreListResponse fromEntity(Store store) {
+    public static StoreListResponse fromEntity(Store store, Double averageRating, Long totalReviews) {
         return StoreListResponse.builder()
                 .id(store.getId())
                 .storeName(store.getStoreName())
@@ -34,6 +36,8 @@ public class StoreListResponse {
                 .isOpen(store.getIsOpen())
                 .ownerName(store.getOwner().getFullName())
                 .imageUrl(store.getImageUrl())
+                .averageRating(averageRating)
+                .totalReviews(totalReviews)
                 .build();
     }
 }

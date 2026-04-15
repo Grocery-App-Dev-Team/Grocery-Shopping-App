@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
+import '../../core/config/environment.dart';
 import '../../core/theme/shipper_theme.dart';
 import '../../core/utils/app_localizations.dart';
 import '../../core/utils/log_silencer.dart';
@@ -12,7 +13,9 @@ import 'bloc/shipper_theme_cubit.dart';
 import 'repository/shipper_repository.dart';
 import 'screens/auth/shipper_splash_screen.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Environment.load();
   LogSilencer.run(() => runApp(const ShipperApp()));
 }
 

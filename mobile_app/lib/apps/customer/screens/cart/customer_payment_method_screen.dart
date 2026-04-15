@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../shared/customer_payment_method.dart';
+import '../../utils/customer_l10n.dart';
 
 class CustomerPaymentMethodScreen extends StatefulWidget {
   const CustomerPaymentMethodScreen({
@@ -20,14 +21,15 @@ class _CustomerPaymentMethodScreenState
   late CustomerPaymentMethod _selected = widget.initial;
 
   Widget _sectionHeader(String text) {
+    final scheme = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
       child: Text(
         text,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w700,
-          color: Colors.black54,
+          color: scheme.onSurfaceVariant,
         ),
       ),
     );
@@ -39,6 +41,7 @@ class _CustomerPaymentMethodScreenState
     required String title,
     required String subtitle,
   }) {
+    final scheme = Theme.of(context).colorScheme;
     final selected = _selected == value;
     return InkWell(
       onTap: () => setState(() => _selected = value),
@@ -59,7 +62,10 @@ class _CustomerPaymentMethodScreenState
                   const SizedBox(height: 2),
                   Text(
                     subtitle,
-                    style: const TextStyle(fontSize: 12, color: Colors.black54),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: scheme.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ),
@@ -97,10 +103,13 @@ class _CustomerPaymentMethodScreenState
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F8FB),
+      backgroundColor: scheme.surfaceContainerLowest,
       appBar: AppBar(
-        title: const Text('Phương thức thanh toán'),
+        title: Text(
+            context.tr(vi: 'Phương thức thanh toán', en: 'Payment method')),
       ),
       body: Column(
         children: [
@@ -108,7 +117,7 @@ class _CustomerPaymentMethodScreenState
             child: ListView(
               padding: const EdgeInsets.only(top: 8),
               children: [
-                _sectionHeader('VÍ ĐIỆN TỬ'),
+                _sectionHeader(context.tr(vi: 'VÍ ĐIỆN TỬ', en: 'E-WALLETS')),
                 Card(
                   margin: const EdgeInsets.symmetric(horizontal: 16),
                   shape: RoundedRectangleBorder(
@@ -118,29 +127,27 @@ class _CustomerPaymentMethodScreenState
                     children: [
                       _tile(
                         value: CustomerPaymentMethod.momo,
-                        leading: _leadingLogo(
-                          text: 'M',
-                          bg: const Color(0xFFE91E63),
-                          fg: Colors.white,
+                        leading: Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Image.asset(
+                            'assets/icons/momo.png',
+                            fit: BoxFit.cover,
+                            width: 42,
+                            height: 42,
+                          ),
                         ),
-                        title: 'MoMo',
-                        subtitle: 'Thanh toán online',
-                      ),
-                      const Divider(height: 1),
-                      _tile(
-                        value: CustomerPaymentMethod.vnpay,
-                        leading: _leadingLogo(
-                          text: 'VNP',
-                          bg: const Color(0xFFD32F2F),
-                          fg: Colors.white,
-                        ),
-                        title: 'VNPay',
-                        subtitle: 'Thanh toán online',
+                        title: CustomerPaymentMethod.momo.labelOf(context),
+                        subtitle: context.tr(
+                            vi: 'Thanh toán online', en: 'Online payment'),
                       ),
                     ],
                   ),
                 ),
-                _sectionHeader('KHÁC'),
+                _sectionHeader(context.tr(vi: 'KHÁC', en: 'OTHERS')),
                 Card(
                   margin: const EdgeInsets.symmetric(horizontal: 16),
                   shape: RoundedRectangleBorder(
@@ -152,12 +159,14 @@ class _CustomerPaymentMethodScreenState
                       width: 42,
                       height: 42,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF2E7D32).withOpacity(0.12),
+                        color: const Color(0xFF2E7D32).withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(Icons.payments_outlined, color: Color(0xFF2E7D32)),
+                      child: const Icon(Icons.payments_outlined,
+                          color: Color(0xFF2E7D32)),
                     ),
-                    title: 'Tiền mặt khi nhận hàng',
+                    title: context.tr(
+                        vi: 'Tiền mặt khi nhận hàng', en: 'Cash on delivery'),
                     subtitle: 'COD',
                   ),
                 ),
@@ -173,16 +182,16 @@ class _CustomerPaymentMethodScreenState
               child: ElevatedButton(
                 onPressed: () => Navigator.of(context).pop(_selected),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1E88E5),
+                  backgroundColor: scheme.primary,
+                  foregroundColor: scheme.onPrimary,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
                 ),
-                child: const Text(
-                  'Xác nhận',
-                  style: TextStyle(
+                child: Text(
+                  context.tr(vi: 'Xác nhận', en: 'Confirm'),
+                  style: const TextStyle(
                     fontWeight: FontWeight.w700,
-                    color: Colors.white,
                   ),
                 ),
               ),

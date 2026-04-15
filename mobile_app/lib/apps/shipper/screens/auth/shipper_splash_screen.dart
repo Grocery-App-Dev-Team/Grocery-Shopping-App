@@ -12,7 +12,7 @@ class ShipperLogo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Image.asset(
-      'images/splash_logo.png',
+      'assets/images/splash_logo.png',
       width: size,
       height: size,
       errorBuilder: (context, error, stackTrace) {
@@ -96,7 +96,7 @@ class _ShipperSplashScreenState extends State<ShipperSplashScreen>
               child: FadeTransition(
                 opacity: _fadeAnimation,
                 child: Image.asset(
-                  'images/splash_logo.png',
+                  'assets/images/splash_logo.png',
                   width: 200,
                   height: 200,
                   errorBuilder: (context, error, stackTrace) {

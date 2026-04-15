@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/config/environment.dart';
 import '../../core/api/api_client.dart';
 import '../../core/theme/store_theme.dart';
 import '../../core/utils/app_localizations.dart';
@@ -28,6 +29,7 @@ import 'screens/home/store_home_screen.dart';
 void main() async {
   await LogSilencer.runAsync(() async {
     WidgetsFlutterBinding.ensureInitialized();
+    await Environment.load();
     AppLogger.initialize();
     final prefs = await SharedPreferences.getInstance();
     final apiClient = ApiClient();

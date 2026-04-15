@@ -234,16 +234,18 @@ public class ProductService {
 
             for (int i = 0; i < request.getUnits().size(); i++) {
                 UpdateProductRequest.ProductUnitRequest unitReq = request.getUnits().get(i);
-                Unit resolvedUnit = resolveUnit(unitReq.getUnitCode(), unitReq.getUnitName());
-                Double inputQuantity = unitReq.getBaseQuantity();
-                BigDecimal baseQuantity = resolveBaseQuantity(inputQuantity, resolvedUnit);
-                String baseUnit = resolveBaseUnit(unitReq.getBaseUnit(), resolvedUnit, baseQuantity);
-                String unitLabel = resolveUnitLabel(unitReq.getUnitName(), resolvedUnit, inputQuantity);
-
                 ProductUnitMapping mapping = null;
                 if (unitReq.getId() != null && unitReq.getId() > 0) {
                     mapping = existingById.get(unitReq.getId());
                 }
+
+                Unit resolvedUnit = resolveUnit(unitReq.getUnitCode(), unitReq.getUnitName());
+                Double inputQuantity = unitReq.getBaseQuantity();
+                BigDecimal existingBaseQuantity = mapping != null ? mapping.getBaseQuantity() : null;
+                BigDecimal baseQuantity = resolveBaseQuantity(inputQuantity, resolvedUnit, existingBaseQuantity);
+                String baseUnit = resolveBaseUnit(unitReq.getBaseUnit(), resolvedUnit, baseQuantity);
+                String unitLabel = resolveUnitLabel(unitReq.getUnitName(), resolvedUnit, inputQuantity);
+
                 if (mapping == null) {
                     mapping = ProductUnitMapping.builder()
                             .product(product)
@@ -390,6 +392,10 @@ public class ProductService {
     }
 
     private BigDecimal resolveBaseQuantity(Double requestedBaseQuantity, Unit unit) {
+        return resolveBaseQuantity(requestedBaseQuantity, unit, null);
+    }
+
+    private BigDecimal resolveBaseQuantity(Double requestedBaseQuantity, Unit unit, BigDecimal existingBaseQuantity) {
         boolean requiresInput = Boolean.TRUE.equals(unit.getRequiresQuantityInput());
         if (!requiresInput) {
             if (requestedBaseQuantity == null || requestedBaseQuantity <= 0) {
@@ -404,6 +410,17 @@ public class ProductService {
         }
 
         BigDecimal inputQuantity = BigDecimal.valueOf(requestedBaseQuantity);
+
+        // Khi cập nhật, một số client gửi lại baseQuantity đã được quy đổi từ lần đọc trước.
+        // Nếu trùng với giá trị đang lưu, giữ nguyên để tránh nhân conversionRate thêm lần nữa.
+        if (existingBaseQuantity != null) {
+            BigDecimal normalizedExisting = existingBaseQuantity.setScale(4, RoundingMode.HALF_UP);
+            BigDecimal normalizedInput = inputQuantity.setScale(4, RoundingMode.HALF_UP);
+            if (normalizedInput.compareTo(normalizedExisting) == 0) {
+                return normalizedExisting;
+            }
+        }
+
         BigDecimal conversionRate = unit.getConversionRate() != null
                 ? unit.getConversionRate()
                 : BigDecimal.ONE;
@@ -426,6 +443,9 @@ public class ProductService {
     private String resolveUnitLabel(String requestedLabel, Unit unit, Double inputQuantity) {
         boolean requiresInput = Boolean.TRUE.equals(unit.getRequiresQuantityInput());
         if (requiresInput) {
+            if (requestedLabel != null && !requestedLabel.isBlank()) {
+                return requestedLabel.trim();
+            }
             if (inputQuantity == null || inputQuantity <= 0) {
                 throw new BadRequestException(
                         "Đơn vị " + unit.getName() + " yêu cầu nhập độ lớn để tạo nhãn");

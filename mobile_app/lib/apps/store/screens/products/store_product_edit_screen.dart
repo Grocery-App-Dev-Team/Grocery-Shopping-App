@@ -99,14 +99,45 @@ class _StoreProductEditScreenState extends State<StoreProductEditScreen> {
 
     for (final unit in activeUnits) {
       _labelControllers.add(TextEditingController(text: unit.displayName));
-      _sizeControllers.add(
-          TextEditingController(text: unit.baseQuantity?.toString() ?? ''));
+      _sizeControllers.add(TextEditingController(
+          text: _initialSizeValue(unit) ?? ''));
       _priceControllers
           .add(TextEditingController(text: unit.price.toStringAsFixed(0)));
       _stockControllers
           .add(TextEditingController(text: unit.stockQuantity.toString()));
       _unitCodeSelections.add(unit.unit.code);
     }
+  }
+
+  String? _initialSizeValue(ProductUnitMapping unit) {
+    final stored = unit.baseQuantity;
+    if (stored == null || stored <= 0) {
+      return null;
+    }
+
+    if (!unit.unit.requiresQuantityInput) {
+      return stored.toString();
+    }
+
+    final symbol = unit.unit.symbol.trim();
+    final label = unit.displayName.trim();
+    if (symbol.isNotEmpty && label.endsWith(symbol)) {
+      final raw = label.substring(0, label.length - symbol.length).trim();
+      final parsed = double.tryParse(raw);
+      if (parsed != null && parsed > 0) {
+        return parsed.toString();
+      }
+    }
+
+    final rate = unit.unit.conversionRate;
+    if (rate > 0) {
+      final normalized = stored / rate;
+      if (normalized > 0) {
+        return normalized.toString();
+      }
+    }
+
+    return stored.toString();
   }
 
   Future<void> _loadUnits() async {
