@@ -13,10 +13,12 @@ import com.grocery.server.user.entity.User;
 import com.grocery.server.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -28,6 +30,8 @@ public class ChatService {
     private final MessageRepository messageRepository;
     private final OrderRepository orderRepository;
     private final UserRepository userRepository;
+    private final SimpMessagingTemplate messagingTemplate;
+        private final com.grocery.server.chat.service.MessageBroadcastDeduplicator messageBroadcastDeduplicator;
 
     public ConversationResponse getOrCreateConversation(Long orderId, Long shipperId, Long customerId) {
         var existing = conversationRepository.findByOrderId(orderId);
@@ -54,7 +58,26 @@ public class ChatService {
 
         Conversation saved = conversationRepository.save(conv);
         log.info("Created conversation {} for order {}", saved.getId(), orderId);
+        broadcastConversationCreated(saved);
         return toConversationResponse(saved);
+    }
+
+    private void broadcastConversationCreated(Conversation conversation) {
+        notifyConversationListUpdate(conversation, conversation.getShipperId());
+        notifyConversationListUpdate(conversation, conversation.getCustomerId());
+    }
+
+    private void notifyConversationListUpdate(Conversation conversation, Long userId) {
+        userRepository.findById(userId).ifPresent(user ->
+                messagingTemplate.convertAndSendToUser(
+                        user.getPhoneNumber(),
+                        "/queue/chat/conversations",
+                        Map.of(
+                                "conversationId", conversation.getId(),
+                                "event", "conversation_updated"
+                        )
+                )
+        );
     }
 
     public List<ConversationResponse> getConversationsForShipper(Long shipperId) {
@@ -93,8 +116,32 @@ public class ChatService {
         conv.setUpdatedAt(LocalDateTime.now());
         conversationRepository.save(conv);
 
+        MessageResponse response = toMessageResponse(saved);
+        broadcastNewMessage(conv, response);
+        broadcastConversationUpdated(conv);
+
+                // Mark this message as already broadcasted so ChangeStream listener can skip duplicate
+                try {
+                        if (saved.getId() != null) {
+                                messageBroadcastDeduplicator.markProcessed(saved.getId());
+                        }
+                } catch (Exception ignored) {
+                }
+
         log.info("Message sent in conversation {} by {}", request.getConversationId(), senderType);
-        return toMessageResponse(saved);
+        return response;
+    }
+
+    private void broadcastNewMessage(Conversation conversation, MessageResponse response) {
+        messagingTemplate.convertAndSend(
+                "/topic/chat/conversation/" + conversation.getId(),
+                response
+        );
+    }
+
+    private void broadcastConversationUpdated(Conversation conversation) {
+        notifyConversationListUpdate(conversation, conversation.getShipperId());
+        notifyConversationListUpdate(conversation, conversation.getCustomerId());
     }
 
     public List<MessageResponse> getMessages(String conversationId) {

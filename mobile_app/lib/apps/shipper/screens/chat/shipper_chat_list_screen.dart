@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/services/chat_websocket_service.dart';
 import '../../repository/shipper_chat_api.dart';
 import '../../models/chat_model.dart';
 import 'shipper_chat_screen.dart';
@@ -14,14 +15,60 @@ class ShipperChatListScreen extends StatefulWidget {
 class _ShipperChatListScreenState extends State<ShipperChatListScreen> {
   final ShipperChatApi _chatApi = ShipperChatApi();
 
+  bool _connected = false;
   List<ConversationModel> _conversations = [];
   bool _loading = true;
   String? _error;
+
+  late final ConversationUpdateCallback _conversationUpdatedListener;
+  late final VoidCallback _connectedListener;
+  late final VoidCallback _disconnectedListener;
+  late final VoidCallback _errorListener;
 
   @override
   void initState() {
     super.initState();
     _loadConversations();
+    _initWebSocket();
+  }
+
+  void _initWebSocket() {
+    final wsService = ChatWebSocketService.instance;
+
+    _conversationUpdatedListener = () {
+      if (mounted) {
+        _loadConversations();
+      }
+    };
+    _connectedListener = () {
+      if (mounted) {
+        setState(() {
+          _connected = true;
+        });
+      }
+    };
+    _disconnectedListener = () {
+      if (mounted) {
+        setState(() {
+          _connected = false;
+        });
+      }
+    };
+    _errorListener = () {
+      if (mounted) {
+        setState(() {
+          _connected = false;
+        });
+      }
+    };
+
+    wsService.addConversationUpdateListener(_conversationUpdatedListener);
+    wsService.addConnectedListener(_connectedListener);
+    wsService.addDisconnectedListener(_disconnectedListener);
+    wsService.addErrorListener(_errorListener);
+
+    wsService.connect();
+    wsService.subscribeToConversationList();
   }
 
   Future<void> _loadConversations() async {
@@ -49,12 +96,31 @@ class _ShipperChatListScreenState extends State<ShipperChatListScreen> {
   }
 
   @override
+  void dispose() {
+    final wsService = ChatWebSocketService.instance;
+    wsService.removeConversationUpdateListener(_conversationUpdatedListener);
+    wsService.removeConnectedListener(_connectedListener);
+    wsService.removeDisconnectedListener(_disconnectedListener);
+    wsService.removeErrorListener(_errorListener);
+    wsService.unsubscribeFromConversationList();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Tin nhắn'),
+        actions: [
+          Icon(
+            _connected ? Icons.wifi : Icons.wifi_off,
+            color: _connected ? Colors.lightGreenAccent : Colors.redAccent,
+            size: 20,
+          ),
+          const SizedBox(width: 12),
+        ],
       ),
       body: Container(
         color: scheme.surfaceContainerLowest,

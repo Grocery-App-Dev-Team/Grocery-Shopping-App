@@ -26,10 +26,17 @@ class _CustomerChatScreenState extends State<CustomerChatScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
 
+  final Set<String> _messageIds = {};
+  bool _connected = false;
   List<MessageModel> _messages = [];
   bool _loading = true;
   bool _sending = false;
   String? _error;
+
+  late final MessageCallback _messageReceivedListener;
+  late final VoidCallback _connectedListener;
+  late final VoidCallback _disconnectedListener;
+  late final VoidCallback _errorListener;
 
   @override
   void initState() {
@@ -41,10 +48,14 @@ class _CustomerChatScreenState extends State<CustomerChatScreen> {
   void _initWebSocket() {
     final wsService = ChatWebSocketService.instance;
 
-    wsService.onMessageReceived = (message) {
-      if (message.conversationId == widget.conversationId) {
-        if (mounted) {
+    debugPrint('📡 Init WebSocket for conversation: ${widget.conversationId}');
+
+    _messageReceivedListener = (message) {
+      debugPrint('📩 Received message: ${message.id}');
+      if (message.conversationId == widget.conversationId && mounted) {
+        if (!_messageIds.contains(message.id)) {
           setState(() {
+            _messageIds.add(message.id);
             _messages.add(message);
           });
           _scrollToBottom();
@@ -52,14 +63,48 @@ class _CustomerChatScreenState extends State<CustomerChatScreen> {
       }
     };
 
+    _connectedListener = () {
+      debugPrint('✅ WebSocket Connected!');
+      if (mounted) {
+        setState(() {
+          _connected = true;
+        });
+      }
+    };
+
+    _disconnectedListener = () {
+      if (mounted) {
+        setState(() {
+          _connected = false;
+        });
+      }
+    };
+
+    _errorListener = () {
+      if (mounted) {
+        setState(() {
+          _connected = false;
+        });
+      }
+    };
+
+    wsService.addMessageListener(_messageReceivedListener);
+    wsService.addConnectedListener(_connectedListener);
+    wsService.addDisconnectedListener(_disconnectedListener);
+    wsService.addErrorListener(_errorListener);
+
     wsService.connect();
     wsService.subscribeToConversation(widget.conversationId);
   }
 
   @override
   void dispose() {
-    ChatWebSocketService.instance
-        .unsubscribeFromConversation(widget.conversationId);
+    final wsService = ChatWebSocketService.instance;
+    wsService.removeMessageListener(_messageReceivedListener);
+    wsService.removeConnectedListener(_connectedListener);
+    wsService.removeDisconnectedListener(_disconnectedListener);
+    wsService.removeErrorListener(_errorListener);
+    wsService.unsubscribeFromConversation(widget.conversationId);
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -71,6 +116,9 @@ class _CustomerChatScreenState extends State<CustomerChatScreen> {
       if (mounted) {
         setState(() {
           _messages = messages;
+          _messageIds
+            ..clear()
+            ..addAll(messages.map((e) => e.id));
           _loading = false;
         });
         _scrollToBottom();
@@ -92,8 +140,24 @@ class _CustomerChatScreenState extends State<CustomerChatScreen> {
     final content = _messageController.text.trim();
     if (content.isEmpty || _sending) return;
 
-    setState(() => _sending = true);
+    // Add message immediately to show user (optimistic UI)
+    final tempId = DateTime.now().millisecondsSinceEpoch.toString();
+    final tempMessage = MessageModel(
+      id: tempId,
+      conversationId: widget.conversationId,
+      senderId: 0,
+      senderType: SenderType.CUSTOMER,
+      content: content,
+      timestamp: DateTime.now(),
+      read: true,
+    );
+    setState(() {
+      _messages.add(tempMessage);
+      _messageIds.add(tempId);
+    });
     _messageController.clear();
+    _scrollToBottom();
+    setState(() => _sending = true);
 
     try {
       final wsService = ChatWebSocketService.instance;
@@ -111,10 +175,15 @@ class _CustomerChatScreenState extends State<CustomerChatScreen> {
         );
         if (mounted) {
           setState(() {
-            _messages.add(message);
+            // Replace temp message with real message
+            final index = _messages.indexWhere((m) => m.id == tempId);
+            if (index != -1) {
+              _messages[index] = message;
+              _messageIds.remove(tempId);
+              _messageIds.add(message.id);
+            }
             _sending = false;
           });
-          _scrollToBottom();
         }
       }
     } catch (_) {
@@ -181,6 +250,12 @@ class _CustomerChatScreenState extends State<CustomerChatScreen> {
           ],
         ),
         actions: [
+          Icon(
+            _connected ? Icons.wifi : Icons.wifi_off,
+            color: _connected ? Colors.lightGreenAccent : Colors.redAccent,
+            size: 20,
+          ),
+          const SizedBox(width: 12),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadMessages,

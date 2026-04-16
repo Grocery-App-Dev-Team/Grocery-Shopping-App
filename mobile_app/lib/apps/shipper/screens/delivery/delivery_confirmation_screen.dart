@@ -9,6 +9,7 @@ import '../../models/shipper_order.dart';
 import '../../repository/shipper_repository.dart';
 import '../../services/shipper_realtime_stomp_service.dart';
 import '../../../../core/theme/shipper_theme.dart';
+import '../../../../core/utils/app_localizations.dart';
 
 class DeliveryConfirmationScreen extends StatefulWidget {
   final ShipperOrder order;
@@ -150,7 +151,8 @@ class _DeliveryConfirmationScreenState
     try {
       final repository = context.read<ShipperRepository>();
 
-      final podImageUrl = await repository.uploadPOD(_proofImage!, widget.order.id);
+      final podImageUrl =
+          await repository.uploadPOD(_proofImage!, widget.order.id);
       if (podImageUrl == null || podImageUrl.isEmpty) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -201,6 +203,7 @@ class _DeliveryConfirmationScreenState
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surfaceContainerLowest,
       appBar: AppBar(
@@ -216,15 +219,15 @@ class _DeliveryConfirmationScreenState
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // ===== ORDER SUMMARY (16px+) =====
-            _buildOrderSummary(),
+            _buildOrderSummary(l),
             const SizedBox(height: 20),
 
             // ===== DELIVERY DETAILS (16px+) =====
-            _buildDeliveryDetails(),
+            _buildDeliveryDetails(l),
             const SizedBox(height: 20),
 
             // ===== PROOF OF DELIVERY =====
-            _buildProofSection(),
+            _buildProofSection(l),
             const SizedBox(height: 28),
 
             // ===== CONFIRM BUTTON (56px - THUMB ZONE) =====
@@ -268,7 +271,7 @@ class _DeliveryConfirmationScreenState
     );
   }
 
-  Widget _buildOrderSummary() {
+  Widget _buildOrderSummary(AppLocalizations l) {
     final itemCount = widget.order.items.length;
     final totalPrice = (widget.order.grandTotal as num?) ?? 0.0;
 
@@ -321,14 +324,14 @@ class _DeliveryConfirmationScreenState
               Text(
                 'Tổng tiền',
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: ShipperTheme.textGreyColor,
-                ),
+                      color: ShipperTheme.textGreyColor,
+                    ),
               ),
               Text(
                 '${totalPrice.toStringAsFixed(0)} ₫',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  color: ShipperTheme.successColor,
-                ),
+                      color: ShipperTheme.successColor,
+                    ),
               ),
             ],
           ),
@@ -352,7 +355,7 @@ class _DeliveryConfirmationScreenState
     );
   }
 
-  Widget _buildDeliveryDetails() {
+  Widget _buildDeliveryDetails(AppLocalizations l) {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -409,8 +412,8 @@ class _DeliveryConfirmationScreenState
                     Text(
                       widget.order.customerName,
                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                            fontWeight: FontWeight.w600,
+                          ),
                     ),
                   ],
                 ),
@@ -455,9 +458,9 @@ class _DeliveryConfirmationScreenState
                       Text(
                         widget.order.customerPhone,
                         style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: ShipperTheme.secondaryColor,
-                          decoration: TextDecoration.underline,
-                        ),
+                              color: ShipperTheme.secondaryColor,
+                              decoration: TextDecoration.underline,
+                            ),
                       ),
                     ],
                   ),
@@ -502,7 +505,7 @@ class _DeliveryConfirmationScreenState
     );
   }
 
-  Widget _buildProofSection() {
+  Widget _buildProofSection(AppLocalizations l) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -595,8 +598,8 @@ class _DeliveryConfirmationScreenState
                     Text(
                       'Chưa có ảnh chứng minh',
                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: ShipperTheme.textLightGreyColor,
-                      ),
+                            color: ShipperTheme.textLightGreyColor,
+                          ),
                     ),
                   ],
                 ),

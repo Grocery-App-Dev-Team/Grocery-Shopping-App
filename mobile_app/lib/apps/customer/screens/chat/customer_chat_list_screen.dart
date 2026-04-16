@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/services/chat_websocket_service.dart';
 import '../../../../features/customer/home/data/chat_api.dart';
 import '../../../../features/customer/home/data/chat_model.dart';
 import '../../shared/customer_state_view.dart';
@@ -16,14 +17,60 @@ class CustomerChatListScreen extends StatefulWidget {
 class _CustomerChatListScreenState extends State<CustomerChatListScreen> {
   final ChatApi _chatApi = ChatApi();
 
+  bool _connected = false;
   List<ConversationModel> _conversations = [];
   bool _loading = true;
   String? _error;
+
+  late final ConversationUpdateCallback _conversationUpdatedListener;
+  late final VoidCallback _connectedListener;
+  late final VoidCallback _disconnectedListener;
+  late final VoidCallback _errorListener;
 
   @override
   void initState() {
     super.initState();
     _loadConversations();
+    _initWebSocket();
+  }
+
+  void _initWebSocket() {
+    final wsService = ChatWebSocketService.instance;
+
+    _conversationUpdatedListener = () {
+      if (mounted) {
+        _loadConversations();
+      }
+    };
+    _connectedListener = () {
+      if (mounted) {
+        setState(() {
+          _connected = true;
+        });
+      }
+    };
+    _disconnectedListener = () {
+      if (mounted) {
+        setState(() {
+          _connected = false;
+        });
+      }
+    };
+    _errorListener = () {
+      if (mounted) {
+        setState(() {
+          _connected = false;
+        });
+      }
+    };
+
+    wsService.addConversationUpdateListener(_conversationUpdatedListener);
+    wsService.addConnectedListener(_connectedListener);
+    wsService.addDisconnectedListener(_disconnectedListener);
+    wsService.addErrorListener(_errorListener);
+
+    wsService.connect();
+    wsService.subscribeToConversationList();
   }
 
   Future<void> _loadConversations() async {
@@ -54,12 +101,31 @@ class _CustomerChatListScreenState extends State<CustomerChatListScreen> {
   }
 
   @override
+  void dispose() {
+    final wsService = ChatWebSocketService.instance;
+    wsService.removeConversationUpdateListener(_conversationUpdatedListener);
+    wsService.removeConnectedListener(_connectedListener);
+    wsService.removeDisconnectedListener(_disconnectedListener);
+    wsService.removeErrorListener(_errorListener);
+    wsService.unsubscribeFromConversationList();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(context.tr(vi: 'Tin nhắn', en: 'Messages')),
+        actions: [
+          Icon(
+            _connected ? Icons.wifi : Icons.wifi_off,
+            color: _connected ? Colors.lightGreenAccent : Colors.redAccent,
+            size: 20,
+          ),
+          const SizedBox(width: 12),
+        ],
       ),
       body: Container(
         color: scheme.surfaceContainerLowest,

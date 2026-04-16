@@ -31,9 +31,9 @@ import java.security.Principal;
 @Slf4j
 public class ChatWebSocketController {
 
-    private final SimpMessagingTemplate messagingTemplate;
     private final ChatService chatService;
     private final UserRepository userRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
     /**
      * Subscribe để nhận tin nhắn mới trong một cuộc trò chuyện
@@ -70,30 +70,8 @@ public class ChatWebSocketController {
         log.info("WebSocket: User {} sending message in conversation {}",
                 userId, request.getConversationId());
 
-        // Lưu tin nhắn vào database
-        MessageResponse message = chatService.sendMessage(userId, request);
-
-        // Broadcast tin nhắn đến tất cả clients đang subscribe cuộc trò chuyện này
-        messagingTemplate.convertAndSend(
-                "/topic/chat/conversation/" + request.getConversationId(),
-                message
-        );
-
-        // Cập nhật danh sách cuộc trò chuyện cho cả shipper và customer
-        messagingTemplate.convertAndSend(
-                "/topic/chat/conversations/" + message.getSenderId(),
-                "update"
-        );
-
-        // Gửi đến người nhận (nếu đang online)
-        String targetUserId = request.getSenderType().equals("SHIPPER")
-                ? String.valueOf(getConversationCustomerId(request.getConversationId()))
-                : String.valueOf(getConversationShipperId(request.getConversationId()));
-
-        messagingTemplate.convertAndSend(
-                "/topic/chat/conversations/" + targetUserId,
-                "update"
-        );
+        // Lưu tin nhắn vào database và để ChatService lo broadcast
+        chatService.sendMessage(userId, request);
     }
 
     /**

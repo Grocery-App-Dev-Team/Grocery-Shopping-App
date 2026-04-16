@@ -33,6 +33,19 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Order> findByStoreId(@Param("storeId") Long storeId);
 
     /**
+     * Lấy đơn hàng của cửa hàng đã thanh toán thành công
+     * - COD: luôn hiển thị (payment_method = COD)
+     * - MOMO: chỉ hiển thị khi thanh toán thành công (payment_status = SUCCESS)
+     * @param storeId ID cửa hàng
+     * @return Danh sách đơn hàng đã thanh toán
+     */
+    @Query("SELECT DISTINCT o FROM Order o JOIN o.payments p " +
+           "WHERE o.store.id = :storeId " +
+           "AND (p.paymentMethod = 'COD' OR (p.paymentMethod = 'MOMO' AND p.status = 'SUCCESS')) " +
+           "ORDER BY o.createdAt DESC")
+    List<Order> findPaidOrdersByStoreId(@Param("storeId") Long storeId);
+
+    /**
      * Lấy tất cả đơn hàng của một tài xế
      * @param shipperId ID tài xế
      * @return Danh sách đơn hàng, sắp xếp theo thời gian mới nhất
@@ -69,9 +82,13 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     /**
      * Lấy tất cả đơn hàng đang chờ tài xế nhận (CONFIRMED)
+     * Chỉ lấy đơn đã thanh toán thành công (COD hoặc MOMO SUCCESS)
      * @return Danh sách đơn hàng chưa có shipper và đang ở trạng thái CONFIRMED
      */
-    @Query("SELECT o FROM Order o WHERE o.status = 'CONFIRMED' AND o.shipper IS NULL ORDER BY o.createdAt ASC")
+    @Query("SELECT DISTINCT o FROM Order o JOIN o.payments p " +
+           "WHERE o.status = 'CONFIRMED' AND o.shipper IS NULL " +
+           "AND (p.paymentMethod = 'COD' OR (p.paymentMethod = 'MOMO' AND p.status = 'SUCCESS')) " +
+           "ORDER BY o.createdAt ASC")
     List<Order> findAvailableOrdersForShippers();
 
     /**

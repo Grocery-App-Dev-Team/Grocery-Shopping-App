@@ -1,5 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:stomp_dart_client/stomp_dart_client.dart';
+
+import '../auth/auth_session.dart';
 import '../constants/app_constants.dart';
 import '../models/chat_model.dart';
 
@@ -11,16 +16,58 @@ class ChatWebSocketService {
   StompClient? _stompClient;
   final String _baseUrl;
 
+  final Set<String> _pendingConversationIds = {};
   final Map<String, StompUnsubscribe> _conversationSubscriptions = {};
+  bool _conversationListPending = false;
   StompUnsubscribe? _conversationListSubscription;
 
-  MessageCallback? onMessageReceived;
-  ConversationUpdateCallback? onConversationUpdated;
-  VoidCallback? onConnected;
-  VoidCallback? onDisconnected;
-  VoidCallback? onError;
+  final List<MessageCallback> _messageListeners = [];
+  final List<ConversationUpdateCallback> _conversationUpdateListeners = [];
+  final List<VoidCallback> _connectListeners = [];
+  final List<VoidCallback> _disconnectListeners = [];
+  final List<VoidCallback> _errorListeners = [];
 
   bool get isConnected => _stompClient?.connected ?? false;
+
+  void addMessageListener(MessageCallback listener) {
+    _messageListeners.add(listener);
+  }
+
+  void removeMessageListener(MessageCallback listener) {
+    _messageListeners.remove(listener);
+  }
+
+  void addConversationUpdateListener(ConversationUpdateCallback listener) {
+    _conversationUpdateListeners.add(listener);
+  }
+
+  void removeConversationUpdateListener(ConversationUpdateCallback listener) {
+    _conversationUpdateListeners.remove(listener);
+  }
+
+  void addConnectedListener(VoidCallback listener) {
+    _connectListeners.add(listener);
+  }
+
+  void removeConnectedListener(VoidCallback listener) {
+    _connectListeners.remove(listener);
+  }
+
+  void addDisconnectedListener(VoidCallback listener) {
+    _disconnectListeners.add(listener);
+  }
+
+  void removeDisconnectedListener(VoidCallback listener) {
+    _disconnectListeners.remove(listener);
+  }
+
+  void addErrorListener(VoidCallback listener) {
+    _errorListeners.add(listener);
+  }
+
+  void removeErrorListener(VoidCallback listener) {
+    _errorListeners.remove(listener);
+  }
 
   ChatWebSocketService._internal(this._baseUrl);
 
@@ -31,13 +78,25 @@ class ChatWebSocketService {
 
   static String _getWebSocketUrl() {
     final baseUrl = AppConstants.baseUrl;
+    debugPrint('🌐 Base URL: $baseUrl');
     final uri = Uri.parse(baseUrl);
-    final wsScheme = uri.scheme == 'https' ? 'wss' : 'ws';
-    final portPart = uri.hasPort ? ':${uri.port}' : '';
-    return '$wsScheme://${uri.host}$portPart/ws';
+    // For SockJS endpoint we should use http/https (not ws/wss)
+    final httpScheme = uri.scheme == 'https' ? 'https' : 'http';
+    // Preserve any base path (e.g. '/api') and append '/ws'
+    final pathPrefix = (uri.path.isEmpty || uri.path == '/') ? '' : uri.path;
+    final wsPath = pathPrefix.endsWith('/') ? '${pathPrefix}ws' : '${pathPrefix}/ws';
+    final httpUri = uri.replace(
+      scheme: httpScheme,
+      path: wsPath,
+      query: null,
+      fragment: null,
+    );
+    debugPrint('📡 SockJS URL: $httpUri');
+    return httpUri.toString();
   }
 
-  void connect({String? authToken}) {
+  Future<void> connect({String? authToken}) async {
+    debugPrint('🔌 Attempting to connect WebSocket...');
     if (_stompClient != null && _stompClient!.connected) {
       debugPrint('ChatWebSocketService: Already connected');
       return;
@@ -45,9 +104,10 @@ class ChatWebSocketService {
 
     debugPrint('ChatWebSocketService: Connecting to $_baseUrl');
 
+    final token = await _getAuthToken(authToken);
     final headers = <String, String>{};
-    if (authToken != null) {
-      headers['Authorization'] = 'Bearer $authToken';
+    if (token != null && token.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $token';
     }
 
     _stompClient = StompClient(
@@ -55,37 +115,83 @@ class ChatWebSocketService {
         url: _baseUrl,
         stompConnectHeaders: headers,
         webSocketConnectHeaders: headers,
-        onConnect: _onConnect,
-        onDisconnect: _onDisconnect,
-        onWebSocketError: _onWebSocketError,
-        onStompError: _onStompError,
-        onUnhandledFrame: _onUnhandledFrame,
-        reconnectDelay: const Duration(seconds: 5),
+        onConnect: (frame) {
+          debugPrint('✅ WebSocket CONNECTED: $frame');
+          _onConnect(frame);
+        },
+        onDisconnect: (frame) {
+          debugPrint('❌ WebSocket DISCONNECTED: $frame');
+          _onDisconnect(frame);
+        },
+        onWebSocketError: (error) {
+          debugPrint('❌ WebSocket ERROR: $error');
+          _onWebSocketError(error);
+        },
+        onStompError: (frame) {
+          debugPrint('❌ STOMP ERROR: ${frame.body}');
+          _onStompError(frame);
+        },
+        onUnhandledFrame: (frame) {
+          debugPrint('⚠️ UNHANDLED FRAME: ${frame.command}');
+          _onUnhandledFrame(frame);
+        },
+        reconnectDelay: const Duration(seconds: 2),
       ),
     );
+    // Start the STOMP client
+    try {
+      _stompClient!.activate();
+    } catch (e) {
+      debugPrint('ChatWebSocketService: Failed to activate STOMP client: $e');
+    }
+  }
 
-    _stompClient!.activate();
+  Future<String?> _getAuthToken(String? explicitToken) async {
+    if (explicitToken != null && explicitToken.isNotEmpty) {
+      return explicitToken;
+    }
+
+    if (AuthSession.token != null && AuthSession.token!.isNotEmpty) {
+      return AuthSession.token;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    final storedToken = prefs.getString(AppConstants.accessTokenKey);
+    if (storedToken != null && storedToken.isNotEmpty) {
+      AuthSession.token = storedToken;
+      return storedToken;
+    }
+    return null;
   }
 
   void _onConnect(StompFrame frame) {
     debugPrint('ChatWebSocketService: Connected');
-    onConnected?.call();
+    _restoreSubscriptions();
+    for (final listener in _connectListeners) {
+      listener();
+    }
   }
 
   void _onDisconnect(StompFrame frame) {
     debugPrint('ChatWebSocketService: Disconnected');
     _clearSubscriptions();
-    onDisconnected?.call();
+    for (final listener in _disconnectListeners) {
+      listener();
+    }
   }
 
   void _onWebSocketError(dynamic error) {
     debugPrint('ChatWebSocketService: WebSocket error: $error');
-    onError?.call();
+    for (final listener in _errorListeners) {
+      listener();
+    }
   }
 
   void _onStompError(StompFrame frame) {
     debugPrint('ChatWebSocketService: STOMP error: ${frame.body}');
-    onError?.call();
+    for (final listener in _errorListeners) {
+      listener();
+    }
   }
 
   void _onUnhandledFrame(StompFrame frame) {
@@ -93,8 +199,11 @@ class ChatWebSocketService {
   }
 
   void subscribeToConversation(String conversationId) {
+    _pendingConversationIds.add(conversationId);
+
     if (_stompClient == null || !_stompClient!.connected) {
-      debugPrint('ChatWebSocketService: Cannot subscribe - not connected');
+      debugPrint(
+          'ChatWebSocketService: Queued subscription for conversation $conversationId');
       return;
     }
 
@@ -103,21 +212,23 @@ class ChatWebSocketService {
       return;
     }
 
+    _subscribeToConversation(conversationId);
+  }
+
+  void _subscribeToConversation(String conversationId) {
     debugPrint(
         'ChatWebSocketService: Subscribing to conversation $conversationId');
 
     final subscription = _stompClient!.subscribe(
       destination: '/topic/chat/conversation/$conversationId',
       callback: (frame) {
-        if (frame.body != null) {
+        if (frame.body != null && frame.body!.isNotEmpty) {
           try {
-            final json = Map<String, dynamic>.from(
-              Uri.splitQueryString(frame.body!).map(
-                (key, value) => MapEntry(key, _parseValue(value)),
-              ),
-            );
-            final message = MessageModel.fromJson(json);
-            onMessageReceived?.call(message);
+            final jsonData = json.decode(frame.body!) as Map<String, dynamic>;
+            final message = MessageModel.fromJson(jsonData);
+            for (final listener in _messageListeners) {
+              listener(message);
+            }
           } catch (e) {
             debugPrint('ChatWebSocketService: Error parsing message: $e');
           }
@@ -129,6 +240,7 @@ class ChatWebSocketService {
   }
 
   void unsubscribeFromConversation(String conversationId) {
+    _pendingConversationIds.remove(conversationId);
     final subscription = _conversationSubscriptions.remove(conversationId);
     if (subscription != null) {
       debugPrint('ChatWebSocketService: Unsubscribing from $conversationId');
@@ -136,10 +248,11 @@ class ChatWebSocketService {
     }
   }
 
-  void subscribeToConversationList(int userId) {
+  void subscribeToConversationList() {
+    _conversationListPending = true;
+
     if (_stompClient == null || !_stompClient!.connected) {
-      debugPrint(
-          'ChatWebSocketService: Cannot subscribe to list - not connected');
+      debugPrint('ChatWebSocketService: Queued conversation list subscription');
       return;
     }
 
@@ -149,19 +262,25 @@ class ChatWebSocketService {
       return;
     }
 
-    debugPrint(
-        'ChatWebSocketService: Subscribing to conversation list for user $userId');
+    _subscribeToConversationList();
+  }
+
+  void _subscribeToConversationList() {
+    debugPrint('ChatWebSocketService: Subscribing to conversation list');
 
     _conversationListSubscription = _stompClient!.subscribe(
-      destination: '/topic/chat/conversations/$userId',
+      destination: '/user/queue/chat/conversations',
       callback: (frame) {
         debugPrint('ChatWebSocketService: Conversation list update received');
-        onConversationUpdated?.call();
+        for (final listener in _conversationUpdateListeners) {
+          listener();
+        }
       },
     );
   }
 
   void unsubscribeFromConversationList() {
+    _conversationListPending = false;
     if (_conversationListSubscription != null) {
       debugPrint('ChatWebSocketService: Unsubscribing from conversation list');
       _conversationListSubscription!();
@@ -184,9 +303,12 @@ class ChatWebSocketService {
 
     _stompClient!.send(
       destination: '/app/chat/send',
-      body:
-          'conversationId=$conversationId&senderType=$senderType&content=${Uri.encodeComponent(content)}',
-      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: json.encode({
+        'conversationId': conversationId,
+        'senderType': senderType,
+        'content': content,
+      }),
+      headers: {'Content-Type': 'application/json'},
     );
   }
 
@@ -201,9 +323,21 @@ class ChatWebSocketService {
 
     _stompClient!.send(
       destination: '/app/chat/read',
-      body: 'conversationId=$conversationId',
-      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: json.encode({'conversationId': conversationId}),
+      headers: {'Content-Type': 'application/json'},
     );
+  }
+
+  void _restoreSubscriptions() {
+    if (_conversationListPending && _conversationListSubscription == null) {
+      _subscribeToConversationList();
+    }
+
+    for (final conversationId in _pendingConversationIds) {
+      if (!_conversationSubscriptions.containsKey(conversationId)) {
+        _subscribeToConversation(conversationId);
+      }
+    }
   }
 
   void _clearSubscriptions() {
@@ -220,13 +354,5 @@ class ChatWebSocketService {
     _clearSubscriptions();
     _stompClient?.deactivate();
     _stompClient = null;
-  }
-
-  dynamic _parseValue(String value) {
-    if (value == 'true') return true;
-    if (value == 'false') return false;
-    final intVal = int.tryParse(value);
-    if (intVal != null) return intVal;
-    return value;
   }
 }
