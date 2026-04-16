@@ -16,7 +16,7 @@ class StoreLogo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Image.asset(
-      'images/splash_logo.png',
+      'assets/images/splash_logo.png',
       width: size,
       height: size,
       errorBuilder: (context, error, stackTrace) {
@@ -127,7 +127,7 @@ class _StoreSplashScreenState extends State<StoreSplashScreen>
                 child: FadeTransition(
                   opacity: _fadeAnimation,
                   child: Image.asset(
-                    'images/splash_logo.png',
+                    'assets/images/splash_logo.png',
                     width: 200,
                     height: 200,
                     errorBuilder: (context, error, stackTrace) {

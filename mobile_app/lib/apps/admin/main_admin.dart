@@ -86,6 +86,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import '../../core/config/app_config.dart';
+import '../../core/config/environment.dart';
 import '../../core/enums/user_role.dart';
 import '../../core/theme/admin_theme.dart';
 import '../../core/api/api_client.dart' as global_api;
@@ -105,6 +106,7 @@ import 'screens/auth/admin_splash_screen.dart';
 void main() async {
   await LogSilencer.runAsync(() async {
     WidgetsFlutterBinding.ensureInitialized();
+    await Environment.load();
     AppLogger.initialize();
     final prefs = await SharedPreferences.getInstance();
     runApp(AdminApp(prefs: prefs));
