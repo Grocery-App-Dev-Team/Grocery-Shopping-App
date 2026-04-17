@@ -31,6 +31,10 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 
 /**
  * Service: OrderService
@@ -239,6 +243,32 @@ public class OrderService {
         return orders.stream()
                 .map(this::mapToOrderResponse)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Lấy tất cả đơn hàng (dành cho admin)
+     *
+     * @return Danh sách đơn hàng, sắp xếp theo thời gian mới nhất
+     */
+    public List<OrderResponse> getAllOrders() {
+        List<Order> orders = orderRepository.findAllOrdersSorted();
+        return orders.stream()
+                .map(this::mapToOrderResponse)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Lấy tất cả đơn hàng có phân trang và bộ lọc (dành cho admin)
+     */
+    public Page<OrderResponse> getAllOrdersPaginated(int page, int size, String sortBy, String sortDir,
+                                                     Long storeId, Order.OrderStatus status,
+                                                     LocalDateTime from, LocalDateTime to) {
+        Sort.Direction direction = "desc".equalsIgnoreCase(sortDir) ? Sort.Direction.DESC : Sort.Direction.ASC;
+        String sortField = (sortBy == null || sortBy.isBlank()) ? "createdAt" : sortBy;
+        Pageable pageable = PageRequest.of(Math.max(0, page), Math.max(1, size), Sort.by(direction, sortField));
+
+        Page<Order> ordersPage = orderRepository.findAllWithFilters(storeId, status, from, to, pageable);
+        return ordersPage.map(this::mapToOrderResponse);
     }
 
     /**

@@ -89,6 +89,52 @@ public class OrderController {
     }
 
     /**
+     * Lấy tất cả đơn hàng (dành cho admin)
+     * GET /api/orders/all
+     * Role: ADMIN
+     */
+    @GetMapping("/all")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<org.springframework.data.domain.Page<OrderResponse>>> getAllOrdersForAdmin(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDir,
+            @RequestParam(required = false) Long storeId,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to
+    ) {
+        Order.OrderStatus statusEnum = null;
+        if (status != null && !status.isBlank()) {
+            try {
+                statusEnum = Order.OrderStatus.valueOf(status.toUpperCase());
+            } catch (IllegalArgumentException ex) {
+                throw new com.grocery.server.shared.exception.BadRequestException("Trạng thái không hợp lệ: " + status);
+            }
+        }
+
+        java.time.LocalDateTime fromDt = parseDateTime(from);
+        java.time.LocalDateTime toDt = parseDateTime(to);
+
+        org.springframework.data.domain.Page<OrderResponse> result = orderService.getAllOrdersPaginated(page, size, sortBy, sortDir, storeId, statusEnum, fromDt, toDt);
+        return ResponseEntity.ok(ApiResponse.success("Lấy tất cả đơn hàng thành công", result));
+    }
+
+    private java.time.LocalDateTime parseDateTime(String s) {
+        if (s == null || s.isBlank()) return null;
+        try {
+            return java.time.LocalDateTime.parse(s);
+        } catch (java.time.format.DateTimeParseException ex) {
+            try {
+                return java.time.LocalDate.parse(s).atStartOfDay();
+            } catch (java.time.format.DateTimeParseException ex2) {
+                throw new com.grocery.server.shared.exception.BadRequestException("Định dạng ngày không hợp lệ: " + s + ". Dùng ISO date hoặc datetime.");
+            }
+        }
+    }
+
+    /**
      * Lấy tất cả đơn hàng của tài xế hiện tại
      * GET /api/orders/my-deliveries
      * Role: SHIPPER
