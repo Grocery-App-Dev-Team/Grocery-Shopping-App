@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../auth/auth_session.dart';
 import '../constants/app_constants.dart';
@@ -14,8 +15,16 @@ class ApiClient {
         )
         ..interceptors.add(
           InterceptorsWrapper(
-            onRequest: (options, handler) {
-              final token = AuthSession.token;
+            onRequest: (options, handler) async {
+              String? token = AuthSession.token;
+              if (token == null || token.isEmpty) {
+                final prefs = await SharedPreferences.getInstance();
+                token = prefs.getString(AppConstants.accessTokenKey);
+                if (token != null && token.isNotEmpty) {
+                  AuthSession.token = token;
+                }
+              }
+
               if (token != null && token.isNotEmpty) {
                 options.headers['Authorization'] = 'Bearer $token';
               }

@@ -3,7 +3,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:flutter/foundation.dart';
 
 class GraphHopperRoutingService {
-  final Dio _dio;
+  late final Dio _dio;
   final String _apiKey;
 
   static const String _baseUrl = 'https://graphhopper.com/api/1/route';
@@ -13,8 +13,15 @@ class GraphHopperRoutingService {
   static const String _trackAsiaApiKey = '0f3c3158d0682da17755746463e57bbe0c';
 
   GraphHopperRoutingService({required String apiKey, Dio? dio})
-    : _apiKey = apiKey,
-      _dio = dio ?? Dio();
+      : _apiKey = apiKey {
+    _dio = dio ??
+        Dio(
+          BaseOptions(
+            connectTimeout: const Duration(seconds: 10),
+            receiveTimeout: const Duration(seconds: 10),
+          ),
+        );
+  }
 
   Future<List<LatLng>> getRoute({
     required LatLng origin,
@@ -231,8 +238,7 @@ class GraphHopperRoutingService {
         }).toList();
 
         final instructions = path['instructions'] as List<dynamic>?;
-        final routeInstructions =
-            instructions?.map((inst) {
+        final routeInstructions = instructions?.map((inst) {
               final i = inst as Map<String, dynamic>;
               return RouteInstruction(
                 text: i['text'] as String? ?? '',
@@ -267,9 +273,8 @@ class GraphHopperRoutingService {
     }
 
     try {
-      final points = waypoints
-          .map((p) => '${p.latitude},${p.longitude}')
-          .toList();
+      final points =
+          waypoints.map((p) => '${p.latitude},${p.longitude}').toList();
 
       final response = await _dio.get(
         _baseUrl,

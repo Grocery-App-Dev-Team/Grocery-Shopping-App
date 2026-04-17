@@ -8,6 +8,7 @@ import '../../models/shipper_order.dart';
 import '../../repository/shipper_repository.dart';
 import '../../services/shipper_realtime_stomp_service.dart';
 import '../../../../core/theme/shipper_theme.dart';
+import '../../../../core/utils/app_localizations.dart';
 
 class ProofOfDeliveryScreen extends StatefulWidget {
   final ShipperOrder order;
@@ -94,6 +95,7 @@ class _ProofOfDeliveryScreenState extends State<ProofOfDeliveryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surfaceContainerLowest,
       appBar: AppBar(
@@ -110,24 +112,24 @@ class _ProofOfDeliveryScreenState extends State<ProofOfDeliveryScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildOrderInfo(),
+                  _buildOrderInfo(l),
                   const SizedBox(height: 24),
-                  _buildPhotoSection(),
+                  _buildPhotoSection(l),
                   if (_errorMessage != null) ...[
                     const SizedBox(height: 16),
-                    _buildErrorBanner(),
+                    _buildErrorBanner(l),
                   ],
                 ],
               ),
             ),
           ),
-          _buildSubmitButton(),
+          _buildSubmitButton(l),
         ],
       ),
     );
   }
 
-  Widget _buildOrderInfo() {
+  Widget _buildOrderInfo(AppLocalizations l) {
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       elevation: 2,
@@ -200,7 +202,7 @@ class _ProofOfDeliveryScreenState extends State<ProofOfDeliveryScreen> {
     );
   }
 
-  Widget _buildPhotoSection() {
+  Widget _buildPhotoSection(AppLocalizations l) {
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       elevation: 2,
@@ -239,16 +241,16 @@ class _ProofOfDeliveryScreenState extends State<ProofOfDeliveryScreen> {
             ),
             const SizedBox(height: 20),
             if (_imageFile != null)
-              _buildImagePreview()
+              _buildImagePreview(l)
             else
-              _buildPhotoPicker(),
+              _buildPhotoPicker(l),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildImagePreview() {
+  Widget _buildImagePreview(AppLocalizations l) {
     return Column(
       children: [
         ClipRRect(
@@ -265,7 +267,8 @@ class _ProofOfDeliveryScreenState extends State<ProofOfDeliveryScreen> {
                   height: 250,
                   child: Container(
                     color: Colors.grey[300],
-                    child: const Icon(Icons.image, size: 50, color: Colors.grey),
+                    child:
+                        const Icon(Icons.image, size: 50, color: Colors.grey),
                   ),
                 ),
         ),
@@ -304,7 +307,7 @@ class _ProofOfDeliveryScreenState extends State<ProofOfDeliveryScreen> {
     );
   }
 
-  Widget _buildPhotoPicker() {
+  Widget _buildPhotoPicker(AppLocalizations l) {
     return Container(
       width: double.infinity,
       height: 200,
@@ -366,7 +369,7 @@ class _ProofOfDeliveryScreenState extends State<ProofOfDeliveryScreen> {
     );
   }
 
-  Widget _buildErrorBanner() {
+  Widget _buildErrorBanner(AppLocalizations l) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -389,7 +392,7 @@ class _ProofOfDeliveryScreenState extends State<ProofOfDeliveryScreen> {
     );
   }
 
-  Widget _buildSubmitButton() {
+  Widget _buildSubmitButton(AppLocalizations l) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -406,9 +409,8 @@ class _ProofOfDeliveryScreenState extends State<ProofOfDeliveryScreen> {
         width: double.infinity,
         height: 52,
         child: ElevatedButton.icon(
-          onPressed: (_isLoading || _imageFile == null)
-              ? null
-              : _submitDelivery,
+          onPressed:
+              (_isLoading || _imageFile == null) ? null : _submitDelivery,
           icon: _isLoading
               ? const SizedBox(
                   width: 20,
@@ -424,9 +426,8 @@ class _ProofOfDeliveryScreenState extends State<ProofOfDeliveryScreen> {
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
           ),
           style: ElevatedButton.styleFrom(
-            backgroundColor: _imageFile == null
-                ? Colors.grey
-                : ShipperTheme.primaryColor,
+            backgroundColor:
+                _imageFile == null ? Colors.grey : ShipperTheme.primaryColor,
             foregroundColor: Colors.white,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
@@ -497,11 +498,11 @@ class _ProofOfDeliveryScreenState extends State<ProofOfDeliveryScreen> {
 
     try {
       final repository = context.read<ShipperRepository>();
-      
+
       // Upload POD ảnh lên backend
       final xFile = XFile(_imageFile!.path);
       final podImageUrl = await repository.uploadPOD(xFile, widget.order.id);
-      
+
       if (podImageUrl == null) {
         setState(
           () => _errorMessage = 'Không thể upload ảnh chứng minh giao hàng',

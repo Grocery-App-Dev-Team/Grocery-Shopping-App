@@ -86,197 +86,207 @@ class _ShipperLoginScreenState extends State<ShipperLoginScreen> {
   }
 
   Widget _buildHeader() => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      // Shipper icon với delivery animation
-      Stack(
-        alignment: Alignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  ShipperTheme.primaryColor.withValues(alpha: 0.1),
-                  ShipperTheme.secondaryColor.withValues(alpha: 0.1),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const ShipperLogo(size: 128),
-          ),
-          // Speed indicator
-          Positioned(
-            top: 8,
-            right: 8,
-            child: Container(
-              width: 12,
-              height: 12,
-              decoration: BoxDecoration(
-                color: Colors.green,
-                borderRadius: BorderRadius.circular(6),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.green.withValues(alpha: 0.4),
-                    blurRadius: 6,
-                    spreadRadius: 2,
+          // Shipper icon với delivery animation
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      ShipperTheme.primaryColor.withValues(alpha: 0.1),
+                      ShipperTheme.secondaryColor.withValues(alpha: 0.1),
+                    ],
                   ),
-                ],
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const ShipperLogo(size: 128),
+              ),
+              // Speed indicator
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Container(
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: Colors.green,
+                    borderRadius: BorderRadius.circular(6),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.green.withValues(alpha: 0.4),
+                        blurRadius: 6,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          Text(
+            _tr('Chào mừng Shipper!', 'Welcome, Shipper!'),
+            style: const TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: ShipperTheme.primaryColor,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _tr(
+              'Đăng nhập để bắt đầu nhận đơn và kiếm thu nhập hấp dẫn.',
+              'Sign in to start receiving orders and earning attractive income.',
+            ),
+            style:
+                TextStyle(fontSize: 16, color: Colors.grey[600], height: 1.4),
+          ),
+        ],
+      );
+
+  Widget _buildLoginForm() => Column(
+        children: [
+          _buildPhoneField(),
+          const SizedBox(height: 20),
+          _buildPasswordField(),
+        ],
+      );
+
+  Widget _buildPhoneField() => CustomTextField(
+        label: _tr('Số điện thoại', 'Phone number'),
+        hint: _tr('Nhập số điện thoại đã đăng ký',
+            'Enter your registered phone number'),
+        controller: _phoneController,
+        keyboardType: TextInputType.phone,
+        prefixIcon: Icons.phone,
+        focusColor: ShipperTheme.primaryColor,
+      );
+
+  Widget _buildPasswordField() => CustomTextField(
+        label: _tr('Mật khẩu', 'Password'),
+        hint: _tr('Nhập mật khẩu', 'Enter your password'),
+        controller: _passwordController,
+        isPassword: true,
+        prefixIcon: Icons.lock,
+        focusColor: ShipperTheme.primaryColor,
+      );
+
+  Widget _buildLoginButton() => Container(
+        width: double.infinity,
+        height: 52,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: _isLoading
+                ? [
+                    ShipperTheme.primaryColor.withValues(alpha: 0.75),
+                    ShipperTheme.secondaryColor.withValues(alpha: 0.75),
+                  ]
+                : const [
+                    ShipperTheme.primaryColor,
+                    ShipperTheme.secondaryColor
+                  ],
+          ),
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: ShipperTheme.primaryColor.withValues(
+                alpha: _isLoading ? 0.2 : 0.35,
+              ),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: ElevatedButton(
+          onPressed: _isLoading ? null : _handleLogin,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.transparent,
+            shadowColor: Colors.transparent,
+            foregroundColor: Colors.white,
+            disabledBackgroundColor: Colors.transparent,
+            disabledForegroundColor: Colors.white.withValues(alpha: 0.82),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+          child: _isLoading
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.motorcycle, size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      _tr('Bắt đầu giao hàng', 'Start delivering'),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+        ),
+      );
+
+  Widget _buildRegisterLink() => Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            _tr('Chưa có tài khoản Shipper? ',
+                'Don\'t have a shipper account? '),
+            style: TextStyle(color: Colors.grey[600]),
+          ),
+          GestureDetector(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const ShipperRegisterScreen(),
+              ),
+            ),
+            child: Text(
+              _tr('Đăng ký ngay', 'Sign up now'),
+              style: const TextStyle(
+                color: ShipperTheme.primaryColor,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
         ],
-      ),
-      const SizedBox(height: 24),
-      Text(
-        _tr('Chào mừng Shipper!', 'Welcome, Shipper!'),
-        style: const TextStyle(
-          fontSize: 28,
-          fontWeight: FontWeight.bold,
-          color: ShipperTheme.primaryColor,
-        ),
-      ),
-      const SizedBox(height: 8),
-      Text(
-        _tr(
-          'Đăng nhập để bắt đầu nhận đơn và kiếm thu nhập hấp dẫn.',
-          'Sign in to start receiving orders and earning attractive income.',
-        ),
-        style: TextStyle(fontSize: 16, color: Colors.grey[600], height: 1.4),
-      ),
-    ],
-  );
-
-  Widget _buildLoginForm() => Column(
-    children: [
-      _buildPhoneField(),
-      const SizedBox(height: 20),
-      _buildPasswordField(),
-    ],
-  );
-
-  Widget _buildPhoneField() => CustomTextField(
-    label: _tr('Số điện thoại', 'Phone number'),
-    hint: _tr('Nhập số điện thoại đã đăng ký', 'Enter your registered phone number'),
-    controller: _phoneController,
-    keyboardType: TextInputType.phone,
-    prefixIcon: Icons.phone,
-    focusColor: ShipperTheme.primaryColor,
-  );
-
-  Widget _buildPasswordField() => CustomTextField(
-    label: _tr('Mật khẩu', 'Password'),
-    hint: _tr('Nhập mật khẩu', 'Enter your password'),
-    controller: _passwordController,
-    isPassword: true,
-    prefixIcon: Icons.lock,
-    focusColor: ShipperTheme.primaryColor,
-  );
-
-  Widget _buildLoginButton() => Container(
-    width: double.infinity,
-    height: 52,
-    decoration: BoxDecoration(
-      gradient: LinearGradient(
-        colors: _isLoading
-            ? [
-                ShipperTheme.primaryColor.withValues(alpha: 0.75),
-                ShipperTheme.secondaryColor.withValues(alpha: 0.75),
-              ]
-            : const [ShipperTheme.primaryColor, ShipperTheme.secondaryColor],
-      ),
-      borderRadius: BorderRadius.circular(12),
-      boxShadow: [
-        BoxShadow(
-          color: ShipperTheme.primaryColor.withValues(
-            alpha: _isLoading ? 0.2 : 0.35,
-          ),
-          blurRadius: 8,
-          offset: const Offset(0, 4),
-        ),
-      ],
-    ),
-    child: ElevatedButton(
-      onPressed: _isLoading ? null : _handleLogin,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.transparent,
-        shadowColor: Colors.transparent,
-        foregroundColor: Colors.white,
-        disabledBackgroundColor: Colors.transparent,
-        disabledForegroundColor: Colors.white.withValues(alpha: 0.82),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-      child: _isLoading
-          ? const SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: Colors.white,
-              ),
-            )
-          : Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.motorcycle, size: 20),
-                const SizedBox(width: 8),
-                Text(
-                  _tr('Bắt đầu giao hàng', 'Start delivering'),
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-    ),
-  );
-
-  Widget _buildRegisterLink() => Row(
-    mainAxisAlignment: MainAxisAlignment.center,
-    children: [
-      Text(
-        _tr('Chưa có tài khoản Shipper? ', 'Don\'t have a shipper account? '),
-        style: TextStyle(color: Colors.grey[600]),
-      ),
-      GestureDetector(
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const ShipperRegisterScreen(),
-          ),
-        ),
-        child: Text(
-          _tr('Đăng ký ngay', 'Sign up now'),
-          style: const TextStyle(
-            color: ShipperTheme.primaryColor,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ),
-    ],
-  );
+      );
 
   Widget _buildForgotPasswordLink() => Center(
-    child: GestureDetector(
-      onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(_tr('Tính năng đang phát triển', 'Feature in development'))),
-        );
-      },
-      child: Text(
-        _tr('Quên mật khẩu?', 'Forgot password?'),
-        style: const TextStyle(
-          color: ShipperTheme.primaryColor,
-          fontWeight: FontWeight.w500,
+        child: GestureDetector(
+          onTap: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                  content: Text(_tr(
+                      'Tính năng đang phát triển', 'Feature in development'))),
+            );
+          },
+          child: Text(
+            _tr('Quên mật khẩu?', 'Forgot password?'),
+            style: const TextStyle(
+              color: ShipperTheme.primaryColor,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
         ),
-      ),
-    ),
-  );
+      );
 
   String? _validatePhone(String? value) {
     if (value == null || value.isEmpty) {
-      return _tr('Vui lòng nhập số điện thoại', 'Please enter your phone number');
+      return _tr(
+          'Vui lòng nhập số điện thoại', 'Please enter your phone number');
     }
     if (value.length != 10 || !RegExp(r'^0[0-9]{9}$').hasMatch(value)) {
       return _tr(
@@ -292,21 +302,43 @@ class _ShipperLoginScreenState extends State<ShipperLoginScreen> {
       return _tr('Vui lòng nhập mật khẩu', 'Please enter your password');
     }
     if (value.length < 6) {
-      return _tr('Mật khẩu phải có ít nhất 6 ký tự', 'Password must be at least 6 characters');
+      return _tr('Mật khẩu phải có ít nhất 6 ký tự',
+          'Password must be at least 6 characters');
     }
     return null;
   }
 
   Future<void> _handleAuthSuccess() async {
     String? shipperName;
+    String? userRole;
     try {
       final userData = await context.read<ShipperRepository>().getCurrentUser();
       final name = userData?['fullName']?.toString().trim();
+      userRole = userData?['role']?.toString();
       if (name != null && name.isNotEmpty) {
         shipperName = name;
       }
     } catch (_) {
       // Fallback to generic welcome text if profile fetch fails.
+    }
+
+    // Kiểm tra role - chỉ cho phép SHIPPER
+    if (userRole != null && userRole != 'SHIPPER') {
+      if (!mounted) return;
+      // Logout ngay nếu không phải SHIPPER
+      await context.read<ShipperRepository>().logout();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _tr(
+              'Tài khoản này không phải là Shipper. Vui lòng sử dụng đúng app.',
+              'This account is not a Shipper. Please use the correct app.',
+            ),
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
     }
 
     if (!mounted) return;
@@ -363,7 +395,8 @@ class _ShipperLoginScreenState extends State<ShipperLoginScreen> {
     });
 
     if (message == 'null' || message.isEmpty) {
-      message = _tr('Thông tin đăng nhập không chính xác', 'Incorrect login information');
+      message = _tr(
+          'Thông tin đăng nhập không chính xác', 'Incorrect login information');
     }
 
     if (message.startsWith('Exception: ')) {
@@ -380,14 +413,16 @@ class _ShipperLoginScreenState extends State<ShipperLoginScreen> {
     if (lowerMessage.contains('số điện thoại chưa được đăng ký') ||
         lowerMessage.contains('không tìm thấy tài khoản') ||
         lowerMessage.contains('not found')) {
-      message = _tr('Số điện thoại chưa được đăng ký', 'Phone number is not registered');
+      message = _tr(
+          'Số điện thoại chưa được đăng ký', 'Phone number is not registered');
       icon = Icons.phone_android;
     } else if (lowerMessage.contains('thông tin đăng nhập không hợp lệ') ||
         lowerMessage.contains('sai số điện thoại hoặc mật khẩu') ||
         lowerMessage.contains('sai mật khẩu') ||
         lowerMessage.contains('bad credentials') ||
         lowerMessage.contains('unauthorized')) {
-      message = _tr('Sai số điện thoại hoặc mật khẩu', 'Wrong phone number or password');
+      message = _tr(
+          'Sai số điện thoại hoặc mật khẩu', 'Wrong phone number or password');
       icon = Icons.lock_outline;
     } else if (lowerMessage.contains('tài khoản chưa được kích hoạt') ||
         lowerMessage.contains('inactive') ||

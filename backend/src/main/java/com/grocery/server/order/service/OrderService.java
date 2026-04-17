@@ -31,6 +31,10 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 
 /**
  * Service: OrderService
@@ -207,7 +211,10 @@ public class OrderService {
             throw new ResourceNotFoundException("User này chưa có cửa hàng");
         }
 
-        List<Order> orders = orderRepository.findByStoreId(store.getId());
+        // Chỉ lấy đơn hàng đã thanh toán thành công:
+        // - COD: luôn hiển thị
+        // - MOMO: chỉ hiển thị khi thanh toán thành công
+        List<Order> orders = orderRepository.findPaidOrdersByStoreId(store.getId());
         return orders.stream()
                 .map(this::mapToOrderResponse)
                 .collect(Collectors.toList());
@@ -236,6 +243,32 @@ public class OrderService {
         return orders.stream()
                 .map(this::mapToOrderResponse)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Lấy tất cả đơn hàng (dành cho admin)
+     *
+     * @return Danh sách đơn hàng, sắp xếp theo thời gian mới nhất
+     */
+    public List<OrderResponse> getAllOrders() {
+        List<Order> orders = orderRepository.findAllOrdersSorted();
+        return orders.stream()
+                .map(this::mapToOrderResponse)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Lấy tất cả đơn hàng có phân trang và bộ lọc (dành cho admin)
+     */
+    public Page<OrderResponse> getAllOrdersPaginated(int page, int size, String sortBy, String sortDir,
+                                                     Long storeId, Order.OrderStatus status,
+                                                     LocalDateTime from, LocalDateTime to) {
+        Sort.Direction direction = "desc".equalsIgnoreCase(sortDir) ? Sort.Direction.DESC : Sort.Direction.ASC;
+        String sortField = (sortBy == null || sortBy.isBlank()) ? "createdAt" : sortBy;
+        Pageable pageable = PageRequest.of(Math.max(0, page), Math.max(1, size), Sort.by(direction, sortField));
+
+        Page<Order> ordersPage = orderRepository.findAllWithFilters(storeId, status, from, to, pageable);
+        return ordersPage.map(this::mapToOrderResponse);
     }
 
     /**
@@ -431,16 +464,12 @@ public class OrderService {
                 if (newStatus == OrderStatus.PICKING_UP) {
                     // Tự động chuyển khi shipper nhận đơn (không cần validate ở đây)
                 } else if (newStatus == OrderStatus.CANCELLED) {
-                    // Customer hoặc Store có thể hủy
-                    boolean isCustomer = order.getCustomer().getId().equals(user.getId());
-                    boolean isStoreOwner = user.getRole().equals(User.UserRole.STORE) &&
-                            order.getStore().getOwner().getId().equals(user.getId());
-                    if (!isCustomer && !isStoreOwner) {
-                        throw new UnauthorizedException("Bạn không có quyền hủy đơn hàng này");
-                    }
+                    // Không cho phép hủy khi đã CONFIRMED
+                    throw new BadRequestException(
+                            "Đơn hàng đã được xác nhận, không thể hủy. Vui lòng liên hệ cửa hàng.");
                 } else {
                     throw new BadRequestException(
-                            "Đơn hàng chỉ có thể chuyển từ CONFIRMED sang PICKING_UP hoặc CANCELLED");
+                            "Đơn hàng chỉ có thể chuyển từ CONFIRMED sang PICKING_UP");
                 }
                 break;
 

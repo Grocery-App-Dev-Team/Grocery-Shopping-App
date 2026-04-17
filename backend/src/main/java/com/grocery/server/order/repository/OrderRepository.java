@@ -2,11 +2,14 @@ package com.grocery.server.order.repository;
 
 import com.grocery.server.order.entity.Order;
 import com.grocery.server.order.entity.Order.OrderStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -31,6 +34,19 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
      */
     @Query("SELECT o FROM Order o WHERE o.store.id = :storeId ORDER BY o.createdAt DESC")
     List<Order> findByStoreId(@Param("storeId") Long storeId);
+
+    /**
+     * Lấy đơn hàng của cửa hàng đã thanh toán thành công
+     * - COD: luôn hiển thị (payment_method = COD)
+     * - MOMO: chỉ hiển thị khi thanh toán thành công (payment_status = SUCCESS)
+     * @param storeId ID cửa hàng
+     * @return Danh sách đơn hàng đã thanh toán
+     */
+    @Query("SELECT DISTINCT o FROM Order o JOIN o.payments p " +
+           "WHERE o.store.id = :storeId " +
+           "AND (p.paymentMethod = 'COD' OR (p.paymentMethod = 'MOMO' AND p.status = 'SUCCESS')) " +
+           "ORDER BY o.createdAt DESC")
+    List<Order> findPaidOrdersByStoreId(@Param("storeId") Long storeId);
 
     /**
      * Lấy tất cả đơn hàng của một tài xế
@@ -69,10 +85,25 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     /**
      * Lấy tất cả đơn hàng đang chờ tài xế nhận (CONFIRMED)
+     * Chỉ lấy đơn đã thanh toán thành công (COD hoặc MOMO SUCCESS)
      * @return Danh sách đơn hàng chưa có shipper và đang ở trạng thái CONFIRMED
      */
-    @Query("SELECT o FROM Order o WHERE o.status = 'CONFIRMED' AND o.shipper IS NULL ORDER BY o.createdAt ASC")
+    @Query("SELECT DISTINCT o FROM Order o JOIN o.payments p " +
+           "WHERE o.status = 'CONFIRMED' AND o.shipper IS NULL " +
+           "AND (p.paymentMethod = 'COD' OR (p.paymentMethod = 'MOMO' AND p.status = 'SUCCESS')) " +
+           "ORDER BY o.createdAt ASC")
     List<Order> findAvailableOrdersForShippers();
+
+    @Query("SELECT o FROM Order o WHERE (:storeId IS NULL OR o.store.id = :storeId) " +
+           "AND (:status IS NULL OR o.status = :status) " +
+           "AND (:from IS NULL OR o.createdAt >= :from) " +
+           "AND (:to IS NULL OR o.createdAt <= :to) " +
+           "ORDER BY o.createdAt DESC")
+    Page<Order> findAllWithFilters(@Param("storeId") Long storeId,
+                                   @Param("status") OrderStatus status,
+                                   @Param("from") LocalDateTime from,
+                                   @Param("to") LocalDateTime to,
+                                   Pageable pageable);
 
     /**
      * Tính tổng doanh thu từ các đơn hàng đã giao thành công (DELIVERED)

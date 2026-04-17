@@ -6,9 +6,11 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../bloc/shipper_dashboard_bloc.dart';
 import '../../models/shipper_order.dart';
 import '../../repository/shipper_repository.dart';
+import '../../repository/shipper_chat_api.dart';
 import '../../services/shipper_realtime_stomp_service.dart';
 import '../../../../core/theme/shipper_theme.dart';
 import '../delivery/proof_of_delivery_screen.dart';
+import '../chat/shipper_chat_screen.dart';
 
 class OrderDetailScreen extends StatefulWidget {
   final ShipperOrder order;
@@ -212,10 +214,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 const SizedBox(width: 12),
                 Text(
                   'Thông tin khách hàng',
-                  style:
-                      Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ) ??
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ) ??
                       const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -228,21 +229,42 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             const SizedBox(height: 8),
             _buildInfoRow(Icons.phone, 'SĐT', _order.customerPhone),
             const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () => _callCustomer(),
-                icon: const Icon(Icons.phone, size: 18),
-                label: const Text('Gọi khách hàng'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.blue,
-                  side: const BorderSide(color: Colors.blue),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _callCustomer(),
+                    icon: const Icon(Icons.phone, size: 18),
+                    label: const Text('Gọi'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.blue,
+                      side: const BorderSide(color: Colors.blue),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
                   ),
                 ),
-              ),
+                if (_order.status == OrderStatus.DELIVERING) ...[
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: () => _openChat(),
+                      icon: const Icon(Icons.chat, size: 18),
+                      label: const Text('Chat'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: ShipperTheme.primaryColor,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
             ),
           ],
         ),
@@ -276,10 +298,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 const SizedBox(width: 12),
                 Text(
                   'Cửa hàng',
-                  style:
-                      Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ) ??
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ) ??
                       const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -323,10 +344,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 const SizedBox(width: 12),
                 Text(
                   'Địa chỉ giao hàng',
-                  style:
-                      Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ) ??
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ) ??
                       const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -368,10 +388,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 const SizedBox(width: 12),
                 Text(
                   'Sản phẩm (${_order.items.length})',
-                  style:
-                      Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ) ??
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ) ??
                       const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -460,10 +479,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 const SizedBox(width: 12),
                 Text(
                   'Thanh toán',
-                  style:
-                      Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ) ??
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ) ??
                       const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -627,6 +645,32 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           context,
         ).showSnackBar(const SnackBar(content: Text('Không thể gọi điện')));
       }
+    }
+  }
+
+  Future<void> _openChat() async {
+    try {
+      final chatApi = ShipperChatApi();
+      final conv =
+          await chatApi.createOrGetConversation(_order.id, _order.customerId);
+      if (!mounted) return;
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => ShipperChatScreen(
+            conversationId: conv.id,
+            customerName: _order.customerName,
+            orderId: _order.id,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          behavior: SnackBarBehavior.floating,
+          content: Text('Không thể mở chat'),
+        ),
+      );
     }
   }
 

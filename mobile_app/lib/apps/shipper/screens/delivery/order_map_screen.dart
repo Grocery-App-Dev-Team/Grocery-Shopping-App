@@ -8,11 +8,14 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../bloc/shipper_dashboard_bloc.dart';
 import '../../models/shipper_order.dart';
 import '../../repository/shipper_repository.dart';
+import '../../repository/shipper_chat_api.dart';
 import '../../services/routing_service.dart';
 import '../../services/shipper_realtime_stomp_service.dart';
 import '../../../../core/theme/shipper_theme.dart';
+import '../../../../core/utils/app_localizations.dart';
 import 'delivery_confirmation_screen.dart';
 import '../order_detail/order_detail_screen.dart';
+import '../chat/shipper_chat_screen.dart';
 
 class OrderMapScreen extends StatefulWidget {
   final ShipperOrder order;
@@ -62,17 +65,16 @@ class _OrderMapScreenState extends State<OrderMapScreen>
   Animation<double>? _rotationAnimation;
 
   _OrderMapScreenState()
-    : _routingService = GraphHopperRoutingService(
-        apiKey: 'c251cd70-5c14-49fe-a134-0ad33f0bf0ed',
-      );
+      : _routingService = GraphHopperRoutingService(
+          apiKey: 'c251cd70-5c14-49fe-a134-0ad33f0bf0ed',
+        );
 
   @override
   void initState() {
     super.initState();
     _order = widget.order;
     // Nếu order đã ở trạng thái DELIVERING hoặc DELIVERED, tự động bật chế độ giao hàng
-    _isDelivering =
-        _order.status == OrderStatus.DELIVERING ||
+    _isDelivering = _order.status == OrderStatus.DELIVERING ||
         _order.status == OrderStatus.DELIVERED;
     // Load lại trạng thái order mới nhất từ server
     _refreshOrderStatus();
@@ -140,8 +142,7 @@ class _OrderMapScreenState extends State<OrderMapScreen>
         setState(() {
           _order = freshOrder;
           // Cập nhật lại _isDelivering dựa trên status mới
-          _isDelivering =
-              _order.status == OrderStatus.DELIVERING ||
+          _isDelivering = _order.status == OrderStatus.DELIVERING ||
               _order.status == OrderStatus.DELIVERED;
         });
       }
@@ -173,6 +174,11 @@ class _OrderMapScreenState extends State<OrderMapScreen>
 
       final position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
+      ).timeout(
+        const Duration(seconds: 15),
+        onTimeout: () {
+          throw Exception('Location timeout - please check GPS');
+        },
       );
       setState(() {
         _currentPosition = LatLng(position.latitude, position.longitude);
@@ -199,8 +205,7 @@ class _OrderMapScreenState extends State<OrderMapScreen>
     try {
       // Nếu đang ở PICKING_UP và chưa ấn "Bắt đầu giao hàng",
       // chỉ hiển thị route đến store (không đến khách hàng)
-      final isGoingToStoreOnly =
-          _order.status == OrderStatus.PICKING_UP &&
+      final isGoingToStoreOnly = _order.status == OrderStatus.PICKING_UP &&
           !_isDelivering &&
           !widget.showDeliveryRoute;
 
@@ -237,26 +242,25 @@ class _OrderMapScreenState extends State<OrderMapScreen>
   }
 
   void _startLocationTracking() {
-    _positionStream =
-        Geolocator.getPositionStream(
-          locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.high,
-            distanceFilter: 10, // Update more frequently for navigation
-          ),
-        ).listen((Position position) {
-          if (mounted) {
-            setState(() {
-              _currentPosition = LatLng(position.latitude, position.longitude);
-              _heading = position.heading; // Get heading direction
-            });
-            _updateCurrentMarker();
-
-            // Auto-rotate map when in navigation mode
-            if (_isNavigating && _currentPosition != null) {
-              _updateNavigationCamera();
-            }
-          }
+    _positionStream = Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 10, // Update more frequently for navigation
+      ),
+    ).listen((Position position) {
+      if (mounted) {
+        setState(() {
+          _currentPosition = LatLng(position.latitude, position.longitude);
+          _heading = position.heading; // Get heading direction
         });
+        _updateCurrentMarker();
+
+        // Auto-rotate map when in navigation mode
+        if (_isNavigating && _currentPosition != null) {
+          _updateNavigationCamera();
+        }
+      }
+    });
   }
 
   void _updateNavigationCamera() {
@@ -377,6 +381,7 @@ class _OrderMapScreenState extends State<OrderMapScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surfaceContainerLowest,
       appBar: AppBar(
@@ -411,66 +416,64 @@ class _OrderMapScreenState extends State<OrderMapScreen>
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-          ? _buildErrorState()
-          : Stack(
-              children: [
-                FlutterMap(
-                  mapController: _mapController,
-                  options: MapOptions(
-                    initialCenter:
-                        _currentPosition ??
-                        (_storeLocations.isNotEmpty
-                            ? _storeLocations.first
-                            : _destination),
-                    initialZoom: 14,
-                    minZoom: 10,
-                    maxZoom: 18,
-                  ),
+              ? _buildErrorState()
+              : Stack(
                   children: [
-                    TileLayer(
-                      urlTemplate:
-                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                      userAgentPackageName: 'com.grocery.shopping_app',
-                    ),
-                    if (_routePoints.isNotEmpty)
-                      PolylineLayer(
-                        polylines: [
-                          Polyline(
-                            points: _routePoints,
-                            color: const Color(0xFF4285F4),
-                            strokeWidth: 5,
-                          ),
-                        ],
+                    FlutterMap(
+                      mapController: _mapController,
+                      options: MapOptions(
+                        initialCenter: _currentPosition ??
+                            (_storeLocations.isNotEmpty
+                                ? _storeLocations.first
+                                : _destination),
+                        initialZoom: 14,
+                        minZoom: 10,
+                        maxZoom: 18,
                       ),
-                    MarkerLayer(markers: _buildMarkers()),
+                      children: [
+                        TileLayer(
+                          urlTemplate:
+                              'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                          userAgentPackageName: 'com.grocery.shopping_app',
+                        ),
+                        if (_routePoints.isNotEmpty)
+                          PolylineLayer(
+                            polylines: [
+                              Polyline(
+                                points: _routePoints,
+                                color: const Color(0xFF4285F4),
+                                strokeWidth: 5,
+                              ),
+                            ],
+                          ),
+                        MarkerLayer(markers: _buildMarkers()),
+                      ],
+                    ),
+                    if (_showDirections) _buildDirectionsPanel(),
+                    _buildLocationInfoPanel(l),
+
+                    // Navigation mode toggle button
+                    if (_isDelivering)
+                      Positioned(
+                        right: 16,
+                        bottom: 320, // Above the location info panel
+                        child: FloatingActionButton.small(
+                          heroTag: 'navigation_toggle',
+                          onPressed: _toggleNavigationMode,
+                          backgroundColor: _isNavigating
+                              ? ShipperTheme.primaryColor
+                              : Colors.white,
+                          foregroundColor:
+                              _isNavigating ? Colors.white : Colors.black87,
+                          child: Icon(
+                            _isNavigating
+                                ? Icons.navigation
+                                : Icons.navigation_outlined,
+                          ),
+                        ),
+                      ),
                   ],
                 ),
-                if (_showDirections) _buildDirectionsPanel(),
-                _buildLocationInfoPanel(),
-
-                // Navigation mode toggle button
-                if (_isDelivering)
-                  Positioned(
-                    right: 16,
-                    bottom: 320, // Above the location info panel
-                    child: FloatingActionButton.small(
-                      heroTag: 'navigation_toggle',
-                      onPressed: _toggleNavigationMode,
-                      backgroundColor: _isNavigating
-                          ? ShipperTheme.primaryColor
-                          : Colors.white,
-                      foregroundColor: _isNavigating
-                          ? Colors.white
-                          : Colors.black87,
-                      child: Icon(
-                        _isNavigating
-                            ? Icons.navigation
-                            : Icons.navigation_outlined,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
     );
   }
 
@@ -582,7 +585,7 @@ class _OrderMapScreenState extends State<OrderMapScreen>
     );
   }
 
-  Widget _buildLocationInfoPanel() {
+  Widget _buildLocationInfoPanel(AppLocalizations l) {
     return Positioned(
       bottom: 0,
       left: 0,
@@ -649,7 +652,8 @@ class _OrderMapScreenState extends State<OrderMapScreen>
                           ),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: ShipperTheme.primaryColor,
-                            side: const BorderSide(color: ShipperTheme.primaryColor),
+                            side: const BorderSide(
+                                color: ShipperTheme.primaryColor),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -735,13 +739,13 @@ class _OrderMapScreenState extends State<OrderMapScreen>
                       _order.status == OrderStatus.PICKING_UP
                           ? 'Xác nhận nhận hàng'
                           : _order.status == OrderStatus.DELIVERED
-                          ? 'Đã giao thành công'
-                          : 'Đang giao hàng',
+                              ? 'Đã giao thành công'
+                              : 'Đang giao hàng',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: _order.status == OrderStatus.PICKING_UP
-                            ? Colors.orange
-                            : Colors.green,
-                      ),
+                            color: _order.status == OrderStatus.PICKING_UP
+                                ? Colors.orange
+                                : Colors.green,
+                          ),
                     ),
                   ],
                 ),
@@ -797,7 +801,9 @@ class _OrderMapScreenState extends State<OrderMapScreen>
                           Expanded(
                             child: Text(
                               _order.customerPhone,
-                              style: Theme.of(context).textTheme.bodyLarge
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyLarge
                                   ?.copyWith(
                                     color: ShipperTheme.primaryColor,
                                     decoration: TextDecoration.underline,
@@ -813,7 +819,8 @@ class _OrderMapScreenState extends State<OrderMapScreen>
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.location_on, color: Colors.red, size: 20),
+                        const Icon(Icons.location_on,
+                            color: Colors.red, size: 20),
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
@@ -830,12 +837,13 @@ class _OrderMapScreenState extends State<OrderMapScreen>
               ),
               const SizedBox(height: 14),
 
-              // ===== ACTION BUTTONS - Thumb zone (56px) =====
+              // ===== ACTION BUTTONS - Thumb zone =====
               Row(
                 children: [
-                  // Call button (44px, secondary)
+                  // Call button
                   SizedBox(
                     height: 48,
+                    width: 80,
                     child: OutlinedButton.icon(
                       onPressed: () async {
                         try {
@@ -853,11 +861,11 @@ class _OrderMapScreenState extends State<OrderMapScreen>
                           }
                         }
                       },
-                      icon: const Icon(Icons.phone, size: 20),
+                      icon: const Icon(Icons.phone, size: 18),
                       label: const Text(
                         'Gọi',
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 13,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -867,150 +875,114 @@ class _OrderMapScreenState extends State<OrderMapScreen>
                           color: ShipperTheme.secondaryColor,
                           width: 2,
                         ),
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 8),
 
-                  // Nút Chi tiết đơn (chỉ hiện khi PICKING_UP) hoặc không hiện
-                  if (_order.status == OrderStatus.PICKING_UP)
-                    SizedBox(
-                      height: 48,
-                      child: OutlinedButton.icon(
-                        onPressed: _showOrderDetailsDialog,
-                        icon: const Icon(Icons.receipt_long, size: 20),
-                        label: const Text(
-                          'Chi tiết',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.orange,
-                          side: const BorderSide(
-                            color: Colors.orange,
-                            width: 2,
-                          ),
+                  // Chat button
+                  SizedBox(
+                    height: 48,
+                    width: 100,
+                    child: OutlinedButton.icon(
+                      onPressed: () => _openChat(),
+                      icon: const Icon(Icons.chat_bubble_outline, size: 18),
+                      label: const Text(
+                        'Nhắn tin',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                    )
-                  else
-                    const SizedBox(width: 0),
-                  if (_order.status == OrderStatus.PICKING_UP)
-                    const SizedBox(width: 12),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.blue,
+                        side: const BorderSide(
+                          color: Colors.blue,
+                          width: 2,
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
 
                   // Confirm button based on status
-                  if (_order.status == OrderStatus.PICKING_UP)
-                    // Nút xác nhận đã nhận hàng từ cửa hàng
-                    Expanded(
-                      child: SizedBox(
-                        height: 56,
-                        child: ElevatedButton.icon(
-                          onPressed: _isUpdatingStatus
-                              ? null
-                              : _confirmReceivedFromStore,
-                          icon: _isUpdatingStatus
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : const Icon(Icons.check_circle, size: 22),
-                          label: Text(
-                            _isUpdatingStatus
-                                ? 'Đang xác nhận...'
-                                : 'Xác nhận đã nhận hàng',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                        ),
-                      ),
-                    )
-                  else if (_order.status == OrderStatus.DELIVERING)
-                    // Nút xác nhận giao hàng thành công
-                    Expanded(
-                      child: SizedBox(
-                        height: 56,
-                        child: ElevatedButton.icon(
-                          onPressed: () async {
-                            final updatedOrder = await Navigator.push<ShipperOrder>(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => DeliveryConfirmationScreen(
-                                  order: _order,
+                  Expanded(
+                    child: SizedBox(
+                      height: 48,
+                      child: ElevatedButton.icon(
+                        onPressed: _order.status == OrderStatus.PICKING_UP
+                            ? (_isUpdatingStatus
+                                ? null
+                                : _confirmReceivedFromStore)
+                            : _order.status == OrderStatus.DELIVERING
+                                ? () async {
+                                    final updatedOrder =
+                                        await Navigator.push<ShipperOrder>(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) =>
+                                            DeliveryConfirmationScreen(
+                                          order: _order,
+                                        ),
+                                      ),
+                                    );
+
+                                    if (!mounted || updatedOrder == null) {
+                                      return;
+                                    }
+
+                                    context.read<ShipperDashboardBloc>().add(
+                                          RefreshDashboardData(),
+                                        );
+
+                                    if (!mounted) return;
+
+                                    Navigator.of(context).pop(true);
+                                  }
+                                : null,
+                        icon: _isUpdatingStatus
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
                                 ),
-                              ),
-                            );
-
-                            if (!mounted || updatedOrder == null) {
-                              return;
-                            }
-
-                            context.read<ShipperDashboardBloc>().add(
-                              RefreshDashboardData(),
-                            );
-
-                            if (!mounted) return;
-
-                            Navigator.of(context).pop(true);
-                          },
-                          icon: const Icon(Icons.check_circle, size: 22),
-                          label: const Text(
-                            'Xác nhận',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: ShipperTheme.successColor,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
+                              )
+                            : const Icon(Icons.check_circle, size: 20),
+                        label: Text(
+                          _order.status == OrderStatus.PICKING_UP
+                              ? (_isUpdatingStatus
+                                  ? 'Đang xác nhận...'
+                                  : 'Xác nhận nhận hàng')
+                              : _order.status == OrderStatus.DELIVERING
+                                  ? 'Xác nhận'
+                                  : 'Đơn đã hoàn tất',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
-                      ),
-                    )
-                  else
-                    Expanded(
-                      child: SizedBox(
-                        height: 56,
-                        child: ElevatedButton.icon(
-                          onPressed: null,
-                          icon: const Icon(Icons.check_circle, size: 22),
-                          label: const Text(
-                            'Đơn đã hoàn tất',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green,
-                            foregroundColor: Colors.white,
-                            disabledBackgroundColor: Colors.green,
-                            disabledForegroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor:
+                              _order.status == OrderStatus.DELIVERED
+                                  ? Colors.green
+                                  : ShipperTheme.successColor,
+                          foregroundColor: Colors.white,
+                          disabledBackgroundColor:
+                              _order.status == OrderStatus.DELIVERED
+                                  ? Colors.green
+                                  : ShipperTheme.successColor,
+                          disabledForegroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
                           ),
                         ),
                       ),
                     ),
+                  ),
                 ],
               ),
             ],
@@ -1160,6 +1132,32 @@ class _OrderMapScreenState extends State<OrderMapScreen>
     }
   }
 
+  Future<void> _openChat() async {
+    try {
+      final chatApi = ShipperChatApi();
+      final conv =
+          await chatApi.createOrGetConversation(_order.id, _order.customerId);
+      if (!mounted) return;
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => ShipperChatScreen(
+            conversationId: conv.id,
+            customerName: _order.customerName,
+            orderId: _order.id,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          behavior: SnackBarBehavior.floating,
+          content: Text('Không thể mở chat'),
+        ),
+      );
+    }
+  }
+
   void _animateToNavigationMode() {
     if (_currentPosition == null) return;
 
@@ -1199,13 +1197,13 @@ class _OrderMapScreenState extends State<OrderMapScreen>
     );
 
     // Rotation animation (ease in out) - shortest path
-    _rotationAnimation = Tween<double>(begin: currentRotation, end: endRotation)
-        .animate(
-          CurvedAnimation(
-            parent: _navAnimationController!,
-            curve: Curves.easeInOutCubic,
-          ),
-        );
+    _rotationAnimation =
+        Tween<double>(begin: currentRotation, end: endRotation).animate(
+      CurvedAnimation(
+        parent: _navAnimationController!,
+        curve: Curves.easeInOutCubic,
+      ),
+    );
 
     // Listen to animation and update map
     _navAnimationController!.addListener(() {
@@ -1397,8 +1395,7 @@ class _OrderMapScreenState extends State<OrderMapScreen>
 
     for (int i = 0; i < _routeResult!.segments.length; i++) {
       final segment = _routeResult!.segments[i];
-      final isLastStore =
-          i == _routeResult!.segments.length - 1 ||
+      final isLastStore = i == _routeResult!.segments.length - 1 ||
           segment.label.contains('Khách');
 
       String subtitle = '';

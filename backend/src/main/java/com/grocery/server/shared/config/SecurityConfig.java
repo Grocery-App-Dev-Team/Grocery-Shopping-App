@@ -88,6 +88,9 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.DELETE, "/reviews/**").hasAnyRole("CUSTOMER", "ADMIN")
                 .requestMatchers("/reviews/**").permitAll()
 
+                // Chat endpoints - cho phép SHIPPER và CUSTOMER
+                .requestMatchers("/chat/**").hasAnyRole("SHIPPER", "CUSTOMER", "ADMIN")
+
                 .anyRequest().authenticated()
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

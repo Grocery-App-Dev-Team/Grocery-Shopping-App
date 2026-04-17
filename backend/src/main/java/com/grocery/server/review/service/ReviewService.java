@@ -242,6 +242,19 @@ public class ReviewService {
     }
 
     /**
+     * Lấy đánh giá theo order ID
+     * Trả về review nếu có, hoặc null nếu đơn chưa được đánh giá
+     * @param orderId ID đơn hàng
+     * @return ReviewResponse hoặc null
+     */
+    @Transactional(readOnly = true)
+    public ReviewResponse getReviewByOrderId(Long orderId) {
+        return reviewRepository.findByOrderId(orderId)
+                .map(this::mapToResponse)
+                .orElse(null);
+    }
+
+    /**
      * Lấy điểm đánh giá trung bình của cửa hàng
      * @param storeId ID cửa hàng
      * @return StoreRatingResponse

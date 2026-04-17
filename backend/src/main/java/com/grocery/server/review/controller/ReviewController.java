@@ -128,6 +128,18 @@ public class ReviewController {
     }
 
     /**
+     * Lấy đánh giá theo order ID
+     * GET /api/reviews/order/{orderId}
+     * Role: Public
+     * Trả về review nếu có, hoặc null nếu đơn chưa được đánh giá
+     */
+    @GetMapping("/order/{orderId}")
+    public ResponseEntity<ApiResponse<ReviewResponse>> getReviewByOrder(@PathVariable Long orderId) {
+        ReviewResponse review = reviewService.getReviewByOrderId(orderId);
+        return ResponseEntity.ok(ApiResponse.success("Lấy đánh giá thành công", review));
+    }
+
+    /**
      * Lấy điểm đánh giá trung bình của cửa hàng
      * GET /api/reviews/store/{storeId}/rating
      * Role: Public

@@ -68,6 +68,31 @@ class _ShipperSplashScreenState extends State<ShipperSplashScreen>
 
     if (!mounted) return;
 
+    if (loggedIn) {
+      // Kiểm tra role
+      try {
+        final userData = await repository.getCurrentUser();
+        final userRole = userData?['role']?.toString();
+        if (userRole != 'SHIPPER') {
+          // Không phải SHIPPER -> logout và chuyển về login
+          await repository.logout();
+          if (!mounted) return;
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const ShipperLoginScreen()),
+          );
+          return;
+        }
+      } catch (_) {
+        // Nếu không lấy được userData -> logout
+        await repository.logout();
+        if (!mounted) return;
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const ShipperLoginScreen()),
+        );
+        return;
+      }
+    }
+
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) => loggedIn

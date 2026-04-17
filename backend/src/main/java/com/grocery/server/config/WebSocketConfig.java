@@ -36,7 +36,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
         // Enable broker cho các destination prefixes
-        config.enableSimpleBroker("/topic", "/queue", "/user");
+        config.enableSimpleBroker("/topic", "/queue");
         
         // Client gửi message đến server qua prefix này
         config.setApplicationDestinationPrefixes("/app");
@@ -47,15 +47,20 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     /**
      * Đăng ký STOMP endpoints
-     * - /ws: WebSocket endpoint chính
+     * - /ws: WebSocket endpoint chính (với SockJS fallback)
+     * - /ws-raw: WebSocket endpoint không có SockJS
      * - setAllowedOriginPatterns: Cho phép tất cả origins (có thể giới hạn sau)
-     * - withSockJS: Fallback cho browsers không hỗ trợ WebSocket
      */
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
+        // Với SockJS fallback
         registry.addEndpoint("/ws")
-                .setAllowedOriginPatterns("*") // Production: giới hạn origins cụ thể
-                .withSockJS(); // Fallback mechanism
+                .setAllowedOriginPatterns("*")
+                .withSockJS();
+        
+        // Không có SockJS - cho native WebSocket
+        registry.addEndpoint("/ws-raw")
+                .setAllowedOriginPatterns("*");
     }
 
     /**
