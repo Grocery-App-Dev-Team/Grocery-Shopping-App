@@ -63,116 +63,82 @@ class OrderService {
     }
   }
 
-  // ========== ADMIN DISCOVERY METHODS (NO BACKEND CHANGES) ==========
-
-  // Cache để tránh quét lại nhiều lần trong cùng một phiên làm việc
-  static List<OrderModel>? _cachedDiscoveredOrders;
-
-  /// Cơ chế Khám phá Đơn hàng dựa trên danh sách User (Theo gợi ý: Check Users -> Load Orders)
-  /// Không quét mù quáng dải ID rộng, tập trung vào các ID có khả năng tồn tại cao.
-  /// Cơ chế Khám phá Đơn hàng dựa trên danh sách User (Theo gợi ý: Check Users -> Load Orders)
-  /// Lấy đơn hàng của một User bất kỳ (Xử lý 404/403 im lặng)
-  Future<List<OrderModel>> getOrdersByUserIdForAdmin(dynamic userId) async {
+  /// Lấy chi tiết đơn hàng theo ID
+  Future<OrderModel> getOrderById(dynamic id) async {
     try {
-      // Endpoint /orders/user/$userId có thể không tồn tại trong backend gốc
-      final response = await _client.get<dynamic>('/orders/user/$userId');
+      final response = await _client.get<dynamic>(
+        '${ApiRoutes.adminOrders.replaceAll('/all', '')}/$id',
+      );
       final data = response.data;
-      if (data != null && data['success'] == true && data['data'] != null) {
-        final List list = data['data'];
-        return list.map((json) => OrderModel.fromJson(Map<String, dynamic>.from(json))).toList();
+      if (data == null || data['data'] == null) {
+        throw const ApiException(message: 'Không tìm thấy dữ liệu đơn hàng');
       }
-      return [];
-    } catch (e) {
-      // Nếu API theo User không tồn tại, ta sẽ dựa vào cơ chế quét ID ở discoverRealOrders
-      return [];
+      return OrderModel.fromJson(Map<String, dynamic>.from(data['data']));
+    } on DioException catch (e) {
+      if (e.error is ApiException) throw e.error as ApiException;
+      throw ApiException(message: e.message ?? 'Lỗi khi lấy chi tiết đơn hàng');
     }
   }
 
-  /// Cơ chế Khám phá Đơn hàng (TUYỆT CHIÊU: Utilizing existing authenticated detail API)
-  /// Vì Backend giới hạn List Order, Admin sẽ "khám phá" đơn hàng bằng cách thử các ID thông qua /orders/{id}
-  Future<List<OrderModel>> discoverRealOrders({
-    bool forceRefresh = false,
-    void Function(int discoveredCount)? onProgress,
+  /// Lấy toàn bộ danh sách đơn hàng cho Admin với phân trang và lọc
+  Future<List<OrderModel>> getAllOrdersAdmin({
+    int page = 0,
+    int size = 100, // Lấy nhiều một chút để demo, thực tế nên phân trang cuộn
+    String sortBy = 'createdAt',
+    String sortDir = 'desc',
+    int? storeId,
+    int? customerId,
+    int? shipperId,
+    String? status,
+    String? from,
+    String? to,
   }) async {
-    if (!forceRefresh && _cachedDiscoveredOrders != null) {
-      return _cachedDiscoveredOrders!;
-    }
-
-    debugPrint('🔍 Đang "khám phá" dữ liệu đơn hàng hệ thống (Utilizing Detail API)...');
-    
     try {
-      // 1. Lấy danh sách toàn bộ User thực tế
-      final usersRes = await _client.get<dynamic>('/users');
-      final List rawList = (usersRes.data != null && usersRes.data['data'] != null) 
-          ? usersRes.data['data'] 
-          : [];
-      
-      final List<String> userIds = rawList
-          .map((u) => u['id']?.toString() ?? '')
-          .where((id) => id.isNotEmpty)
+      final queryParams = {
+        'page': page,
+        'size': size,
+        'sortBy': sortBy,
+        'sortDir': sortDir,
+      };
+
+      if (storeId != null) queryParams['storeId'] = storeId;
+      if (customerId != null) queryParams['customerId'] = customerId;
+      if (shipperId != null) queryParams['shipperId'] = shipperId;
+      if (status != null && status != 'all' && status != 'Tất cả') {
+        queryParams['status'] = status;
+      }
+      if (from != null) queryParams['from'] = from;
+      if (to != null) queryParams['to'] = to;
+
+      debugPrint('Dio Request: GET ${ApiRoutes.adminOrders} with params: $queryParams');
+
+      final response = await _client.get<dynamic>(
+        ApiRoutes.adminOrders,
+        queryParameters: queryParams,
+      );
+
+      final data = response.data;
+      debugPrint('Dio Response Data: $data');
+      if (data == null || data['data'] == null) return [];
+
+      // Response format: { success: true, message: "...", data: { content: [...], pageNo: 0, ... } }
+      final content = data['data']['content'];
+      if (content is! List) return [];
+      debugPrint('Extracted content length: ${content.length}');
+
+      return content
+          .map((item) => OrderModel.fromJson(Map<String, dynamic>.from(item)))
           .toList();
-      
-      // 2. Gọi API lấy đơn hàng cho từng User (Dùng API mới tạo ở Backend)
-      final Set<OrderModel> allFoundOrders = {};
-      final List<Future<List<OrderModel>>> futures = [];
-      
-      for (var uid in userIds) {
-        futures.add(getOrdersByUserIdForAdmin(uid));
-      }
-
-      final results = await Future.wait(futures);
-      for (var list in results) {
-        allFoundOrders.addAll(list);
-        if (onProgress != null) onProgress(allFoundOrders.length);
-      }
-
-      final List<OrderModel> finalOrders = allFoundOrders.toList();
-      
-      // Sắp xếp theo thời gian mới nhất
-      finalOrders.sort((a, b) {
-        final dateA = DateTime.tryParse(a.createdAt ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
-        final dateB = DateTime.tryParse(b.createdAt ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
-        return dateB.compareTo(dateA);
-      });
-
-      _cachedDiscoveredOrders = finalOrders;
-      return finalOrders.isNotEmpty ? finalOrders : _mockOrders;
-    } catch (e) {
-      debugPrint('❌ Lỗi trong quá trình khám phá Đơn hàng theo User: $e');
-      return _cachedDiscoveredOrders ?? _mockOrders;
+    } on DioException catch (e) {
+      debugPrint('getAllOrdersAdmin error: $e');
+      if (e.error is ApiException) throw e.error as ApiException;
+      rethrow;
     }
   }
 
-  // Cờ để biết endpoint /orders/available có bị giới hạn (403) hay không
-  static bool _isAvailableRestricted = false;
-
-  /// Lấy toàn bộ danh sách đơn hàng cho Admin thông qua cơ chế Khám phá (Tránh 403 redundant)
-  Future<List<OrderModel>> getAllOrdersAdmin({bool forceRefresh = false}) async {
-    // Nếu đã biết là bị giới hạn, ta vào thẳng chế độ Discovery để tiết kiệm tài nguyên
-    if (_isAvailableRestricted) {
-      return await discoverRealOrders(forceRefresh: forceRefresh);
-    }
-
-    try {
-      final response = await _client.get<dynamic>('/orders/available');
-      if (response.data != null && response.data['data'] != null) {
-        final List list = response.data['data'];
-        return list.map((json) => OrderModel.fromJson(Map<String, dynamic>.from(json))).toList();
-      }
-    } catch (e) {
-      if (e is DioException && e.response?.statusCode == 403) {
-        _isAvailableRestricted = true; // Đánh dấu là bị giới hạn
-        debugPrint('ℹ️ /orders/available is restricted. Admin is now using Discovery Mode for orders.');
-      }
-    }
-    
-    return await discoverRealOrders(forceRefresh: forceRefresh);
-  }
-
-  /// Lấy thống kê tổng quan cho Dashboard Admin (An toàn và Tối ưu)
+  /// Lấy thống kê tổng quan cho Dashboard Admin
   Future<Map<String, dynamic>> getAdminStats() async {
     try {
-      // 1. Lấy dữ liệu từ các API chắc chắn có quyền (Users, Stores)
       final results = await Future.wait([
         _client.get<dynamic>('/users').catchError((e) => Response(requestOptions: RequestOptions(path: ''), data: {'data': []})),
         _client.get<dynamic>('/stores').catchError((e) => Response(requestOptions: RequestOptions(path: ''), data: {'data': []})),
@@ -181,25 +147,25 @@ class OrderService {
       final usersList = (results[0].data['data'] as List?) ?? [];
       final storesList = (results[1].data['data'] as List?) ?? [];
       
-      // 2. Lấy dữ liệu đơn hàng (Khám phá thay vì gọi API list gây 403)
-      final orders = await discoverRealOrders();
+      final orders = await getAllOrdersAdmin(size: 10); // Chỉ lấy 10 cái bản tin mới nhất cho stats
 
       double totalRevenue = 0;
       for (var o in orders) {
-        totalRevenue += (o.totalAmount ?? 0).toDouble();
+        if (o.status != 'CANCELLED') {
+          totalRevenue += (o.totalAmount ?? 0).toDouble();
+        }
       }
 
       return {
         'userCount': usersList.length,
         'storeCount': storesList.length,
-        'orders': orders.length,
+        'orders': orders.length, // Lưu ý: đây chỉ là count của trang 1, thực tế nên có endpoint stats riêng
         'revenue': totalRevenue,
-        'profit': totalRevenue * 0.1, // Ước tính 10%
+        'profit': totalRevenue * 0.1, 
         'recentOrders': orders.take(5).toList(),
         'recentUsers': usersList.take(3).toList(),
       };
     } catch (e) {
-      debugPrint('getAdminStats Error: $e');
       return {
         'userCount': 0, 'storeCount': 0, 'orders': 0, 'revenue': 0, 'recentOrders': [],
       };

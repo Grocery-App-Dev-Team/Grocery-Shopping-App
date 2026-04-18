@@ -101,8 +101,13 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
      */
     @Query(value = 
         "SELECT p.* FROM products p " +
+<<<<<<< Updated upstream
         "JOIN product_units pu ON pu.product_id = p.id " +
         "JOIN order_items oi ON oi.product_unit_id = pu.id " +
+=======
+              "JOIN product_units pum ON pum.product_id = p.id " +
+              "JOIN order_items oi ON oi.product_unit_mapping_id = pum.id " +
+>>>>>>> Stashed changes
         "WHERE p.store_id = :storeId " +
         "GROUP BY p.id " +
         "ORDER BY SUM(oi.quantity) DESC " +

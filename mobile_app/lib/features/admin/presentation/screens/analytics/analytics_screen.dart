@@ -9,6 +9,7 @@ import 'package:grocery_shopping_app/features/auth/models/user_model.dart';
 import 'package:grocery_shopping_app/features/orders/data/order_model.dart';
 import 'package:grocery_shopping_app/features/orders/data/order_service.dart';
 import 'package:grocery_shopping_app/core/utils/export_service.dart';
+import 'package:grocery_shopping_app/core/utils/app_localizations.dart';
 
 class AnalyticsScreen extends StatefulWidget {
   const AnalyticsScreen({super.key});
@@ -18,8 +19,8 @@ class AnalyticsScreen extends StatefulWidget {
 }
 
 class _AnalyticsScreenState extends State<AnalyticsScreen> {
-  String _selectedTimeFilter = 'Tuần này';
-  final List<String> _timeFilters = ['Hôm nay', 'Tuần này', 'Tháng này', 'Năm nay'];
+  String _selectedTimeFilter = 'week';
+  final List<String> _timeFilters = ['today', 'week', 'month', 'year'];
   final _currencyFormat = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ');
 
   final UserRepository _userRepository = ApiUserRepositoryImpl();
@@ -35,10 +36,31 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
   void _loadStats() {
     final orderService = OrderService();
+    
+    // Calculate date range for the selected filter
+    final now = DateTime.now();
+    DateTime? fromDate;
+    DateTime? toDate = now; // Typically up to now
+
+    if (_selectedTimeFilter == 'today') {
+      fromDate = DateTime(now.year, now.month, now.day);
+    } else if (_selectedTimeFilter == 'week') {
+      // Start of current week (Monday)
+      fromDate = now.subtract(Duration(days: now.weekday - 1));
+      fromDate = DateTime(fromDate.year, fromDate.month, fromDate.day);
+    } else if (_selectedTimeFilter == 'month') {
+      fromDate = DateTime(now.year, now.month, 1);
+    } else if (_selectedTimeFilter == 'year') {
+      fromDate = DateTime(now.year, 1, 1);
+    }
+
+    final String? fromStr = fromDate?.toIso8601String();
+    final String? toStr = toDate.toIso8601String();
+
     _statsFuture = Future.wait<dynamic>([
       _userRepository.getUsers(),
       _storeRepository.getStores(),
-      orderService.getAllOrdersAdmin(),
+      orderService.getAllOrdersAdmin(from: fromStr, to: toStr, size: 200), // Get a larger batch for analytics
     ]).then((results) {
       final users = results[0] as List<UserModel>;
       final stores = results[1] as List<Map<String, dynamic>>;
@@ -48,24 +70,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
       final sCount = stores.length;
       final shippersList = users.where((u) => u.role == UserRole.shipper).toList();
 
-      // 1. Lọc đơn hàng theo thời gian đã chọn
-      final now = DateTime.now();
-      final filteredOrders = orders.where((ord) {
-        if (ord.createdAt == null) return false;
-        final date = DateTime.tryParse(ord.createdAt!) ?? now;
-        
-        if (_selectedTimeFilter == 'Hôm nay') {
-          return date.year == now.year && date.month == now.month && date.day == now.day;
-        } else if (_selectedTimeFilter == 'Tuần này') {
-          final weekStart = now.subtract(Duration(days: now.weekday - 1));
-          return date.isAfter(weekStart.subtract(const Duration(seconds: 1)));
-        } else if (_selectedTimeFilter == 'Tháng này') {
-          return date.year == now.year && date.month == now.month;
-        } else if (_selectedTimeFilter == 'Năm nay') {
-          return date.year == now.year;
-        }
-        return true;
-      }).toList();
+      // Dữ liệu đã được lọc từ server
+      final filteredOrders = orders;
 
       // 2. Tổng hợp dữ liệu thực tế (Doanh thu & Tổng đơn)
       double realRevenue = 0;
@@ -77,6 +83,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
       for (var order in filteredOrders) {
         final status = (order.status ?? '').toUpperCase();
+        
+        // Count towards revenue if not cancelled
         if (status != 'CANCELLED') {
           realRevenue += (order.totalAmount ?? 0).toDouble();
           
@@ -90,15 +98,15 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         }
 
         // Dữ liệu biểu đồ (Phân phối theo giờ/ngày/tháng)
-        final date = DateTime.tryParse(order.createdAt!) ?? now;
+        final date = order.createdAt != null ? DateTime.tryParse(order.createdAt!) ?? now : now;
         int chartIdx = 0;
-        if (_selectedTimeFilter == 'Hôm nay') {
-          chartIdx = (date.hour / 4).floor().clamp(0, 5); // 6 mốc
-        } else if (_selectedTimeFilter == 'Tuần này') {
+        if (_selectedTimeFilter == 'today') {
+          chartIdx = (date.hour / 4).floor().toInt().clamp(0, 5); // 6 mốc
+        } else if (_selectedTimeFilter == 'week') {
           chartIdx = (date.weekday - 1).clamp(0, 6); // 7 ngày
-        } else if (_selectedTimeFilter == 'Tháng này') {
-          chartIdx = ((date.day - 1) / 7).floor().clamp(0, 3); // 4 tuần
-        } else if (_selectedTimeFilter == 'Năm nay') {
+        } else if (_selectedTimeFilter == 'month') {
+          chartIdx = ((date.day - 1) / 7).floor().toInt().clamp(0, 3); // 4 tuần
+        } else if (_selectedTimeFilter == 'year') {
           chartIdx = (date.month - 1).clamp(0, 11); // 12 tháng
         }
         final amount = (order.totalAmount ?? 0).toDouble();
@@ -136,19 +144,22 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         'shippersList': shippersList,
       };
     }).catchError((e) {
-      debugPrint('Analytics Load Error: $e');
-      return <String, Object>{'userCount': 0, 'storeCount': 0, 'offline': true};
+      return <String, dynamic>{'userCount': 0, 'storeCount': 0, 'offline': true};
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
-        title: const Text('Báo Cáo Bán Hàng'),
-        backgroundColor: const Color(0xFF6A1B9A),
-        foregroundColor: Colors.white,
+        title: Text(l.translate('nav_overview'), style: const TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
+        foregroundColor: Theme.of(context).appBarTheme.foregroundColor,
+        elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.file_download_outlined),
@@ -209,18 +220,12 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                 _buildTimeFilter(),
                 const SizedBox(height: 20),
 
-                Text(
-                  'Tổng quan $_selectedTimeFilter',
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 16),
-
                 // Hàng 1: User (Real API) + Store (Real API)
                 Row(
                   children: [
                     Expanded(
                       child: _buildStatCard(
-                        'Người dùng',
+                        l.translate('nav_users'),
                         isLoading ? '...' : userCount.toString(),
                         Icons.people_outline,
                         Colors.green,
@@ -230,7 +235,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: _buildStatCard(
-                        'Cửa hàng',
+                        l.translate('nav_stores'),
                         isLoading ? '...' : storeCount.toString(),
                         Icons.storefront,
                         Colors.blue,
@@ -245,7 +250,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                   children: [
                     Expanded(
                       child: _buildStatCard(
-                        'Doanh thu',
+                        l.translate('revenue'),
                         isLoading ? '...' : _currencyFormat.format(revenue),
                         Icons.attach_money,
                         Colors.orange,
@@ -255,8 +260,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: _buildStatCard(
-                        'Đơn hàng',
-                        isLoading ? '...' : '$orders đơn',
+                        l.translate('nav_orders'),
+                        isLoading ? '...' : '$orders ${l.byLocale(vi: 'đơn', en: 'orders')}',
                         Icons.shopping_bag,
                         Colors.purple,
                         isReal: !isOffline,
@@ -296,17 +301,17 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                 ),
 
                 const SizedBox(height: 32),
-                const Text('Biểu đồ Doanh thu (Quét thực tế)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                Text(l.byLocale(vi: 'Biểu đồ Doanh thu (Hệ thống quét)', en: 'Revenue Chart (Sync Data)'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 16),
                 _buildLineChart(chartData),
 
                 const SizedBox(height: 32),
-                const Text('Bảng Xếp Hạng', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                Text(l.byLocale(vi: 'Bảng Xếp Hạng', en: 'Leaderboards'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 16),
                 _buildLeaderboards(topStoresData, topShippersData, shippersList),
 
                 const SizedBox(height: 32),
-                const Text('Cơ cấu Thanh toán (Ước tính)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                Text(l.byLocale(vi: 'Cơ cấu Thanh toán (Ước tính)', en: 'Payment Distribution (Est.)'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 16),
                 _buildPieChart(),
                 const SizedBox(height: 32),
@@ -319,6 +324,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   }
 
   Widget _buildTimeFilter() {
+    final l = AppLocalizations.of(context)!;
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -328,13 +334,13 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
           children: [
             const Icon(Icons.filter_list, color: Colors.deepPurple, size: 20),
             const SizedBox(width: 8),
-            const Text('Khoảng thời gian:', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+            Text('${l.byLocale(vi: 'Khoảng thời gian', en: 'Time Range')}:', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
             const Spacer(),
             DropdownButtonHideUnderline(
               child: DropdownButton<String>(
                 value: _selectedTimeFilter,
                 icon: const Icon(Icons.calendar_today, color: Colors.deepPurple, size: 18),
-                items: _timeFilters.map((t) => DropdownMenuItem(value: t, child: Text(t, style: const TextStyle(fontWeight: FontWeight.w600)))).toList(),
+                items: _timeFilters.map((t) => DropdownMenuItem(value: t, child: Text(l.translate(t), style: const TextStyle(fontWeight: FontWeight.w600)))).toList(),
                 onChanged: (val) {
                   if (val != null) setState(() => _selectedTimeFilter = val);
                 },
@@ -347,8 +353,10 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   }
 
   Widget _buildStatCard(String title, String value, IconData icon, Color color, {bool isReal = true}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Card(
       elevation: 2,
+      color: Theme.of(context).cardColor,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -365,20 +373,20 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                 ),
                 const Spacer(),
                 Tooltip(
-                  message: isReal ? 'Dữ liệu thực từ API' : 'Dữ liệu ước tính',
+                  message: isReal ? 'Real-time API' : 'Estimated',
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: isReal ? Colors.green[50] : Colors.orange[50],
+                      color: isReal ? Colors.green.withValues(alpha: 0.1) : Colors.orange.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: isReal ? Colors.green[200]! : Colors.orange[200]!),
+                      border: Border.all(color: isReal ? Colors.green.withValues(alpha: 0.3) : Colors.orange.withValues(alpha: 0.3)),
                     ),
                     child: Text(
                       isReal ? 'LIVE' : 'EST.',
                       style: TextStyle(
                         fontSize: 9,
                         fontWeight: FontWeight.bold,
-                        color: isReal ? Colors.green[700] : Colors.orange[700],
+                        color: isReal ? Colors.green : Colors.orange,
                       ),
                     ),
                   ),
@@ -390,11 +398,11 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
               fit: BoxFit.scaleDown,
               child: Text(
                 value,
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.grey[800]),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.grey[800]),
               ),
             ),
             const SizedBox(height: 4),
-            Text(title, style: TextStyle(fontSize: 12, color: Colors.grey[600], fontWeight: FontWeight.w500)),
+            Text(title, style: TextStyle(fontSize: 12, color: isDark ? Colors.grey[400] : Colors.grey[600], fontWeight: FontWeight.w500)),
           ],
         ),
       ),
@@ -402,13 +410,14 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   }
 
   Widget _buildLineChart(Map<int, double> chartData) {
+    final l = AppLocalizations.of(context)!;
     int pointCount = 7;
     List<String> xLabels = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
-    if (_selectedTimeFilter == 'Hôm nay') {
-      pointCount = 6; xLabels = ['Sau 0h', '4h', '8h', '12h', '16h', '20h'];
-    } else if (_selectedTimeFilter == 'Tháng này') {
-      pointCount = 4; xLabels = ['Tuần 1', 'Tuần 2', 'Tuần 3', 'Tuần 4'];
-    } else if (_selectedTimeFilter == 'Năm nay') {
+    if (_selectedTimeFilter == 'today') {
+      pointCount = 6; xLabels = ['0h', '4h', '8h', '12h', '16h', '20h'];
+    } else if (_selectedTimeFilter == 'month') {
+      pointCount = 4; xLabels = [l.byLocale(vi: 'Tuần 1', en: 'W1'), l.byLocale(vi: 'Tuần 2', en: 'W2'), l.byLocale(vi: 'Tuần 3', en: 'W3'), l.byLocale(vi: 'Tuần 4', en: 'W4')];
+    } else if (_selectedTimeFilter == 'year') {
       pointCount = 12; xLabels = ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10', 'T11', 'T12'];
     }
 
@@ -474,12 +483,13 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   }
 
   Widget _buildLeaderboards(List topStoresData, List topShippersData, List<UserModel> shippersList) {
+    final l = AppLocalizations.of(context)!;
     // Chuẩn bị dữ liệu hiển thị cho Cửa hàng
     final storeItems = topStoresData.map((s) {
       return {
         'name': s['name'],
         'metric': _currencyFormat.format(s['revenue']),
-        'subtitle': 'Doanh thu đóng góp',
+        'subtitle': l.byLocale(vi: 'Doanh thu đóng góp', en: 'Contribution Revenue'),
       };
     }).toList();
 
@@ -499,7 +509,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
       );
       return {
         'name': shipperObj.fullName,
-        'metric': '${s['count']} Đơn',
+        'metric': '${s['count']} ${l.byLocale(vi: 'Đơn', en: 'Orders')}',
         'subtitle': 'SĐT: ${shipperObj.phoneNumber}',
       };
     }).toList();
@@ -507,12 +517,12 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     return Column(
       children: [
         if (storeItems.isNotEmpty)
-          _buildLeaderboardCard('🏆 Top Cửa Hàng Xuất Sắc', storeItems, Colors.amber),
+          _buildLeaderboardCard('🏆 ${l.byLocale(vi: 'Top Cửa Hàng Xuất Sắc', en: 'Top Performing Stores')}', storeItems, Colors.amber),
         if (storeItems.isNotEmpty) const SizedBox(height: 16),
         if (shipperItems.isNotEmpty)
-          _buildLeaderboardCard('🚀 Top Shipper Nổi Bật', shipperItems, Colors.blueAccent),
+          _buildLeaderboardCard('🚀 ${l.byLocale(vi: 'Top Shipper Nổi Bật', en: 'Outstanding Shippers')}', shipperItems, Colors.blueAccent),
         if (storeItems.isEmpty && shipperItems.isEmpty)
-          const Center(child: Text('Chưa có dữ liệu xếp hạng')),
+          Center(child: Text(l.translate('no_data'))),
       ],
     );
   }
@@ -557,8 +567,10 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   }
 
   Widget _buildPieChart() {
+    final l = AppLocalizations.of(context)!;
     return Card(
       elevation: 2,
+      color: Theme.of(context).cardColor,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
@@ -582,11 +594,11 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildIndicator(Colors.green, 'TT Trực tuyến (70%)'),
+                _buildIndicator(Colors.green, l.byLocale(vi: 'TT Trực tuyến (70%)', en: 'Online Payment (70%)')),
                 const SizedBox(height: 8),
-                _buildIndicator(Colors.blue, 'COD Giao hàng (20%)'),
+                _buildIndicator(Colors.blue, l.byLocale(vi: 'COD Giao hàng (20%)', en: 'Cash on Delivery (20%)')),
                 const SizedBox(height: 8),
-                _buildIndicator(Colors.orange, 'Ví Điện Tử (10%)'),
+                _buildIndicator(Colors.orange, l.byLocale(vi: 'Ví Điện Tử (10%)', en: 'E-Wallet (10%)')),
               ],
             )
           ],

@@ -20,6 +20,8 @@ class ApiClient {
 
   late final Dio _dio;
   final TokenStorage _tokenStorage = TokenStorage();
+  
+  static void Function()? onUnauthorized;
 
   Dio get dio => _dio;
 
@@ -139,6 +141,7 @@ class _ErrorInterceptor extends Interceptor {
     if (statusCode != null) {
       if (statusCode == 401) {
         message = 'Phiên đăng nhập hết hạn';
+        ApiClient.onUnauthorized?.call();
       } else if (statusCode == 403)
         message = 'Không có quyền truy cập';
       else if (statusCode >= 500)

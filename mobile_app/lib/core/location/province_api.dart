@@ -80,24 +80,26 @@ class ProvinceApi {
   }
 
   Future<List<LocationItem>> getWardsByProvince(int provinceCode) async {
-    final response = await _dioV2.get('/p/$provinceCode/?depth=2');
+    // V1 API supports depth=3 to get districts and wards in one call
+    final response = await _dio.get('/p/$provinceCode?depth=3');
     final data = response.data;
 
-    if (data is! Map || data['wards'] is! List) {
+    if (data is! Map || data['districts'] is! List) {
       return [];
     }
 
     final wards = <LocationItem>[];
     final seenCodes = <int>{};
 
-    for (final ward in data['wards'] as List<dynamic>) {
-      if (ward is! Map<String, dynamic>) {
-        continue;
-      }
-
-      final item = LocationItem.fromJson(ward);
-      if (seenCodes.add(item.code)) {
-        wards.add(item);
+    for (final district in data['districts']) {
+      if (district is Map && district['wards'] is List) {
+        for (final ward in district['wards']) {
+          if (ward is! Map<String, dynamic>) continue;
+          final item = LocationItem.fromJson(ward);
+          if (seenCodes.add(item.code)) {
+            wards.add(item);
+          }
+        }
       }
     }
 

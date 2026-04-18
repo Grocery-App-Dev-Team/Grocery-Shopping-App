@@ -8,6 +8,8 @@ import 'package:grocery_shopping_app/features/orders/data/order_model.dart';
 import 'package:grocery_shopping_app/core/utils/export_service.dart';
 import 'package:intl/intl.dart';
 
+import 'package:grocery_shopping_app/core/utils/app_localizations.dart';
+
 class ShipperManagementScreen extends StatefulWidget {
   const ShipperManagementScreen({super.key});
 
@@ -23,18 +25,21 @@ class _ShipperManagementScreenState extends State<ShipperManagementScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
-        title: const Text('Quản lý Shipper', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
+        title: Text(l.translate('mgmt_shippers'), style: const TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
+        foregroundColor: Theme.of(context).appBarTheme.foregroundColor,
         elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.file_download_outlined, color: Colors.indigo),
             onPressed: () => _exportShippers(context),
-            tooltip: 'Xuất Excel',
+            tooltip: 'Export CSV',
           ),
           const SizedBox(width: 8),
         ],
@@ -44,10 +49,10 @@ class _ShipperManagementScreenState extends State<ShipperManagementScreen> {
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
             child: TextField(
               decoration: InputDecoration(
-                hintText: 'Tìm kiếm shipper theo tên/SĐT...',
+                hintText: l.translate('search_hint'),
                 prefixIcon: const Icon(Icons.search, color: Colors.grey),
                 filled: true,
-                fillColor: const Color(0xFFF0F2F5),
+                fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFF0F2F5),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
                 contentPadding: const EdgeInsets.symmetric(vertical: 0),
               ),
@@ -73,10 +78,8 @@ class _ShipperManagementScreenState extends State<ShipperManagementScreen> {
             s.fullName.toLowerCase().contains(_searchQuery) || s.phoneNumber.contains(_searchQuery)
           ).toList();
 
-          // Calculate system-wide stats
           final int onlineCount = shippers.where((s) => s.status == UserStatus.active).length;
           
-          // Total revenue for shippers (sum of all shipping fees from completed orders)
           double totalSystemRevenue = 0.0;
           for (var order in allOrders) {
             if (['DELIVERED', 'COMPLETED', 'Hoàn thành'].contains(order.status)) {
@@ -86,10 +89,10 @@ class _ShipperManagementScreenState extends State<ShipperManagementScreen> {
 
           return Column(
             children: [
-              _buildStatsHeader(shippers.length, onlineCount, totalSystemRevenue),
+              _buildStatsHeader(shippers.length, onlineCount, totalSystemRevenue, l),
               Expanded(
                 child: filteredShippers.isEmpty 
-                  ? _buildEmptyState()
+                  ? _buildEmptyState(l)
                   : RefreshIndicator(
                       onRefresh: () async => setState(() {}),
                       child: ListView.builder(
@@ -97,13 +100,12 @@ class _ShipperManagementScreenState extends State<ShipperManagementScreen> {
                         itemCount: filteredShippers.length,
                         itemBuilder: (context, index) {
                           final shipper = filteredShippers[index];
-                          // Aggregate orders for this specific shipper
                           final shipperOrders = allOrders.where((o) => o.shipperId.toString() == shipper.id).toList();
                           final completedCount = shipperOrders.where((o) => ['DELIVERED', 'COMPLETED', 'Hoàn thành'].contains(o.status)).length;
                           final earnings = shipperOrders.where((o) => ['DELIVERED', 'COMPLETED', 'Hoàn thành'].contains(o.status))
                               .fold(0.0, (sum, o) => sum + (o.shippingFee ?? 0.0));
 
-                          return _buildShipperCard(shipper, completedCount, earnings);
+                          return _buildShipperCard(shipper, completedCount, earnings, l);
                         },
                       ),
                     ),
@@ -115,16 +117,16 @@ class _ShipperManagementScreenState extends State<ShipperManagementScreen> {
     );
   }
 
-  Widget _buildStatsHeader(int total, int online, double revenue) {
+  Widget _buildStatsHeader(int total, int online, double revenue, AppLocalizations l) {
     return Container(
       padding: const EdgeInsets.all(16),
-      color: Colors.white,
+      color: Theme.of(context).cardColor,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildStatItem('Tổng Shipper', total.toString(), Icons.group),
-          _buildStatItem('Đang Online', online.toString(), Icons.online_prediction, color: Colors.green),
-          _buildStatItem('Tổng thu nhập', _currencyFormat.format(revenue), Icons.account_balance_wallet, color: Colors.indigo),
+          _buildStatItem(l.translate('nav_shippers'), total.toString(), Icons.group),
+          _buildStatItem(l.translate('active'), online.toString(), Icons.online_prediction, color: Colors.green),
+          _buildStatItem(l.translate('revenue'), _currencyFormat.format(revenue), Icons.account_balance_wallet, color: Colors.indigo),
         ],
       ),
     );
@@ -141,13 +143,13 @@ class _ShipperManagementScreenState extends State<ShipperManagementScreen> {
     );
   }
 
-  Widget _buildShipperCard(UserModel shipper, int completedOrders, double earnings) {
+  Widget _buildShipperCard(UserModel shipper, int completedOrders, double earnings, AppLocalizations l) {
     final bool isOnline = shipper.status == UserStatus.active;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4))],
       ),
@@ -161,8 +163,8 @@ class _ShipperManagementScreenState extends State<ShipperManagementScreen> {
                   children: [
                     CircleAvatar(
                       radius: 24,
-                      backgroundColor: Colors.orange[50],
-                      child: Text(shipper.fullName.substring(0, 1), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.orange)),
+                      backgroundColor: Colors.orange.withValues(alpha: 0.1),
+                      child: Text(shipper.fullName.isNotEmpty ? shipper.fullName.substring(0, 1) : 'S', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.orange)),
                     ),
                     Positioned(
                       bottom: 0,
@@ -173,7 +175,7 @@ class _ShipperManagementScreenState extends State<ShipperManagementScreen> {
                         decoration: BoxDecoration(
                           color: isOnline ? Colors.green : Colors.grey,
                           shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
+                          border: Border.all(color: Theme.of(context).cardColor, width: 2),
                         ),
                       ),
                     ),
@@ -189,24 +191,24 @@ class _ShipperManagementScreenState extends State<ShipperManagementScreen> {
                     ],
                   ),
                 ),
-                _buildLockIndicator(shipper.status),
+                _buildLockIndicator(shipper.status, l),
               ],
             ),
             const Divider(height: 24),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _buildMiniStat('Tổng đơn', completedOrders.toString(), Icons.local_mall_outlined),
-                _buildMiniStat('Thu nhập', _currencyFormat.format(earnings), Icons.account_balance_wallet_outlined),
+                _buildMiniStat('Orders', completedOrders.toString(), Icons.local_mall_outlined),
+                _buildMiniStat('Earnings', _currencyFormat.format(earnings), Icons.account_balance_wallet_outlined),
                 TextButton(
                   onPressed: () async {
                     await Navigator.push(
                       context,
                       MaterialPageRoute(builder: (_) => UserDetailScreen(user: shipper)),
                     );
-                    setState(() {});
+                    if (mounted) setState(() {});
                   },
-                  child: const Text('Chi tiết', style: TextStyle(fontSize: 12, color: Colors.indigo)),
+                  child: Text(l.translate('detail_user').split(' ')[0], style: const TextStyle(fontSize: 12, color: Colors.indigo, fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
@@ -232,7 +234,7 @@ class _ShipperManagementScreenState extends State<ShipperManagementScreen> {
     );
   }
 
-  Widget _buildLockIndicator(UserStatus status) {
+  Widget _buildLockIndicator(UserStatus status, AppLocalizations l) {
     final bool active = status == UserStatus.active;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -240,20 +242,25 @@ class _ShipperManagementScreenState extends State<ShipperManagementScreen> {
         color: active ? Colors.green.withValues(alpha: 0.1) : Colors.red.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Text(active ? 'Sẵn sàng' : 'Khóa', style: TextStyle(color: active ? Colors.green[700] : Colors.red[700], fontSize: 10, fontWeight: FontWeight.bold)),
+      child: Text(active ? l.translate('active') : l.translate('inactive'), style: TextStyle(color: active ? Colors.green[700] : Colors.red[700], fontSize: 10, fontWeight: FontWeight.bold)),
     );
   }
 
+  Widget _buildEmptyState(AppLocalizations l) {
+    return Center(child: Text(l.translate('no_data'), style: const TextStyle(color: Colors.grey)));
+  }
+
   void _exportShippers(BuildContext context) async {
+    final l = AppLocalizations.of(context)!;
     try {
       final List<UserModel> shippers = await _userRepository.getUsers(role: UserRole.shipper);
       
       final exportData = shippers.map((s) => {
         'ID': s.id,
-        'Họ tên': s.fullName,
-        'SĐT': s.phoneNumber,
-        'Trạng thái': s.status == UserStatus.active ? 'Sẵn sàng' : 'Đã khóa',
-        'Ngày tham gia': DateFormat('dd/MM/yyyy').format(s.createdAt),
+        'Name': s.fullName,
+        'Phone': s.phoneNumber,
+        'Status': s.status == UserStatus.active ? l.translate('active') : l.translate('inactive'),
+        'Joined Date': DateFormat('dd/MM/yyyy').format(s.createdAt),
       }).toList();
 
       if (mounted) {
@@ -265,12 +272,8 @@ class _ShipperManagementScreenState extends State<ShipperManagementScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi xuất dữ liệu: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi xuất dữ liệu: ${e.toString().replaceAll('Exception: ', '')}')));
       }
     }
-  }
-
-  Widget _buildEmptyState() {
-    return const Center(child: Text('Không tìm thấy shipper phù hợp', style: TextStyle(color: Colors.grey)));
   }
 }

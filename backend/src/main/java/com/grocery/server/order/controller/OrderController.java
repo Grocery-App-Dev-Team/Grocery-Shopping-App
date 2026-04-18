@@ -2,20 +2,24 @@ package com.grocery.server.order.controller;
 
 import com.grocery.server.order.dto.request.CreateOrderRequest;
 import com.grocery.server.order.dto.request.UpdateOrderStatusRequest;
+import com.grocery.server.order.entity.Order;
 import com.grocery.server.order.dto.response.OrderResponse;
 import com.grocery.server.order.service.OrderService;
 import com.grocery.server.shared.dto.ApiResponse;
+import com.grocery.server.shared.dto.PageResponse;
 import com.grocery.server.shared.exception.UnauthorizedException;
 import com.grocery.server.user.entity.User;
 import com.grocery.server.user.repository.UserRepository;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -111,6 +115,31 @@ public class OrderController {
     public ResponseEntity<ApiResponse<List<OrderResponse>>> getAvailableOrders() {
         List<OrderResponse> orders = orderService.getAvailableOrders();
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách đơn hàng có thể nhận thành công", orders));
+    }
+
+    /**
+     * Lấy tất cả đơn hàng (Admin)
+     * GET /api/orders/all
+     * Role: ADMIN
+     */
+    @GetMapping("/all")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<PageResponse<OrderResponse>>> getAllOrders(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDir,
+            @RequestParam(required = false) Long storeId,
+            @RequestParam(required = false) Long customerId,
+            @RequestParam(required = false) Long shipperId,
+            @RequestParam(required = false) Order.OrderStatus status,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to) {
+
+        PageResponse<OrderResponse> response = orderService.getAllOrdersAdmin(
+                page, size, sortBy, sortDir, storeId, customerId, shipperId, status, from, to);
+
+        return ResponseEntity.ok(ApiResponse.success("Lấy danh sách tất cả đơn hàng thành công", response));
     }
 
     /**

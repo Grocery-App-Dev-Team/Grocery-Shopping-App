@@ -23,6 +23,16 @@ class ApiStoreRepositoryImpl implements StoreRepository {
   }
 
   @override
+  Future<Map<String, dynamic>> getStoreById(String storeId) async {
+    try {
+      final response = await _apiClient.get('/stores/$storeId');
+      return response.data['data'] as Map<String, dynamic>;
+    } catch (e) {
+      throw Exception('Failed to load store details: $e');
+    }
+  }
+
+  @override
   Future<void> approveStore(String storeId) async {
     try {
       await _apiClient.patch('/stores/$storeId/status');

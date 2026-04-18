@@ -141,9 +141,11 @@ class _LoginScreenState extends State<LoginScreen>
             const SizedBox(height: AppDimensions.spacing3Xl),
             _buildLoginButton(),
             const SizedBox(height: AppDimensions.spacing2Xl),
-            _buildForgotPassword(),
-            const SizedBox(height: AppDimensions.spacing4Xl),
-            _buildRegisterSection(),
+            if (widget.userRole != UserRole.admin) ...[
+              _buildForgotPassword(),
+              const SizedBox(height: AppDimensions.spacing4Xl),
+              _buildRegisterSection(),
+            ],
           ],
         ),
       ),
@@ -188,7 +190,9 @@ class _LoginScreenState extends State<LoginScreen>
 
         // Role-specific subtitle
         Text(
-          'Đăng nhập vào tài khoản ${widget.userRole.displayName.toLowerCase()}',
+          widget.userRole == UserRole.admin 
+            ? 'Quản trị viên hệ thống'
+            : 'Đăng nhập vào tài khoản ${widget.userRole.displayName.toLowerCase()}',
           style: AppTextStyles.bodyLarge.copyWith(
             color: AppColors.textSecondary,
           ),

@@ -3,6 +3,7 @@ import 'package:grocery_shopping_app/features/orders/data/order_model.dart';
 import 'package:grocery_shopping_app/features/orders/data/order_service.dart';
 import 'package:intl/intl.dart';
 import 'package:grocery_shopping_app/core/utils/export_service.dart';
+import 'package:grocery_shopping_app/core/utils/app_localizations.dart';
 
 class DeliveryManagementScreen extends StatefulWidget {
   const DeliveryManagementScreen({super.key});
@@ -15,7 +16,7 @@ class _DeliveryManagementScreenState extends State<DeliveryManagementScreen> {
   final OrderService _orderService = OrderService();
   final _searchController = TextEditingController();
   String _searchQuery = '';
-  String _statusFilter = 'Tất cả';
+  String _statusFilter = 'all';
 
   @override
   void dispose() {
@@ -25,21 +26,24 @@ class _DeliveryManagementScreenState extends State<DeliveryManagementScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F2F5),
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
-        title: const Text('Giao hàng & Vận chuyển', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
+        title: Text(l.translate('nav_delivery'), style: const TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
+        foregroundColor: Theme.of(context).appBarTheme.foregroundColor,
         elevation: 0,
         actions: [
-          if (_searchQuery.isNotEmpty || _statusFilter != 'Tất cả')
+          if (_searchQuery.isNotEmpty || _statusFilter != 'all')
             IconButton(
               icon: const Icon(Icons.filter_alt_off_outlined, color: Colors.red),
               onPressed: () {
                 setState(() {
                   _searchQuery = '';
-                  _statusFilter = 'Tất cả';
+                  _statusFilter = 'all';
                   _searchController.clear();
                 });
               },
@@ -58,11 +62,11 @@ class _DeliveryManagementScreenState extends State<DeliveryManagementScreen> {
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
-                hintText: 'Tìm theo Shipper, Mã đơn...',
+                hintText: l.byLocale(vi: 'Tìm theo Shipper, Mã đơn...', en: 'Search by Shipper, ID...'),
                 prefixIcon: const Icon(Icons.search, size: 20),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                 filled: true,
-                fillColor: Colors.grey[100],
+                fillColor: isDark ? Colors.grey[900] : Colors.grey[100],
                 contentPadding: EdgeInsets.zero,
               ),
               onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
@@ -84,11 +88,11 @@ class _DeliveryManagementScreenState extends State<DeliveryManagementScreen> {
           }).toList();
 
           // Apply Status Filter
-          if (_statusFilter != 'Tất cả') {
+          if (_statusFilter != 'all') {
             String apiStatus = '';
-            if (_statusFilter == 'Chờ lấy') apiStatus = 'PICKING_UP';
-            if (_statusFilter == 'Đang giao') apiStatus = 'DELIVERING';
-            if (_statusFilter == 'Hoàn tất') apiStatus = 'DELIVERED';
+            if (_statusFilter == 'order_picking') apiStatus = 'PICKING_UP';
+            if (_statusFilter == 'order_delivering') apiStatus = 'DELIVERING';
+            if (_statusFilter == 'order_delivered') apiStatus = 'DELIVERED';
             activeDeliveries = activeDeliveries.where((o) => o.status == apiStatus).toList();
           }
 
@@ -127,6 +131,7 @@ class _DeliveryManagementScreenState extends State<DeliveryManagementScreen> {
   }
 
   Widget _buildDeliveryStats(List<OrderModel> deliveries) {
+    final l = AppLocalizations.of(context)!;
     final delivering = deliveries.where((o) => (o.status ?? '').toUpperCase() == 'DELIVERING').length;
     final picking = deliveries.where((o) => (o.status ?? '').toUpperCase() == 'PICKING_UP').length;
     final completed = deliveries.where((o) {
@@ -136,27 +141,28 @@ class _DeliveryManagementScreenState extends State<DeliveryManagementScreen> {
 
     return Container(
       padding: const EdgeInsets.all(16),
-      color: Colors.white,
+      color: Theme.of(context).cardColor,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildStatItem('Chờ lấy', picking.toString(), Icons.move_to_inbox, Colors.orange),
-          _buildStatItem('Đang giao', delivering.toString(), Icons.delivery_dining, Colors.blue),
-          _buildStatItem('Hoàn tất', completed.toString(), Icons.check_circle_outline, Colors.green),
+          _buildStatItem(l.translate('order_picking'), picking.toString(), Icons.move_to_inbox, Colors.orange, 'order_picking'),
+          _buildStatItem(l.translate('order_delivering'), delivering.toString(), Icons.delivery_dining, Colors.blue, 'order_delivering'),
+          _buildStatItem(l.translate('order_delivered'), completed.toString(), Icons.check_circle_outline, Colors.green, 'order_delivered'),
         ],
       ),
     );
   }
 
-  Widget _buildStatItem(String title, String value, IconData icon, Color color) {
-    bool isSelected = _statusFilter == title;
+  Widget _buildStatItem(String title, String value, IconData icon, Color color, String filterKey) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    bool isSelected = _statusFilter == filterKey;
     return GestureDetector(
-      onTap: () => setState(() => _statusFilter = isSelected ? 'Tất cả' : title),
+      onTap: () => setState(() => _statusFilter = isSelected ? 'all' : filterKey),
       child: Column(
         children: [
           Icon(icon, color: isSelected ? color : color.withValues(alpha: 0.4), size: 24),
           const SizedBox(height: 8),
-          Text(value, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: isSelected ? Colors.black : Colors.grey)),
+          Text(value, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: isSelected ? (isDark ? Colors.white : Colors.black) : Colors.grey)),
           Text(title, style: TextStyle(fontSize: 11, color: isSelected ? color : Colors.grey, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
         ],
       ),
@@ -164,6 +170,7 @@ class _DeliveryManagementScreenState extends State<DeliveryManagementScreen> {
   }
 
   Widget _buildFilterChips() {
+    final l = AppLocalizations.of(context)!;
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -190,12 +197,14 @@ class _DeliveryManagementScreenState extends State<DeliveryManagementScreen> {
   }
 
   Widget _buildDeliveryCard(OrderModel order) {
+    final l = AppLocalizations.of(context)!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: [BoxShadow(color: Theme.of(context).shadowColor.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -213,10 +222,10 @@ class _DeliveryManagementScreenState extends State<DeliveryManagementScreen> {
                         builder: (context) {
                           final String idStr = order.id?.toString() ?? '';
                           final String displayId = idStr.length > 6 ? idStr.substring(idStr.length - 6) : idStr.padLeft(6, '0');
-                          return Text('Đơn #${displayId.toUpperCase()}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15));
+                          return Text('${l.byLocale(vi: 'Đơn', en: 'Order')} #${displayId.toUpperCase()}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15));
                         },
                       ),
-                      Text('Khách hàng: ${order.customerName ?? "Khách lẻ"}', style: const TextStyle(fontSize: 13, color: Colors.grey)),
+                      Text('${l.byLocale(vi: 'Khách hàng', en: 'Customer')}: ${order.customerName ?? l.byLocale(vi: "Khách lẻ", en: "Guest")}', style: const TextStyle(fontSize: 13, color: Colors.grey)),
                     ],
                   ),
                 ),
@@ -228,7 +237,7 @@ class _DeliveryManagementScreenState extends State<DeliveryManagementScreen> {
               children: [
                 const Icon(Icons.location_on_outlined, size: 16, color: Colors.indigo),
                 const SizedBox(width: 12),
-                Expanded(child: Text(order.address ?? "Không có địa chỉ", style: const TextStyle(fontSize: 12, color: Colors.black87), overflow: TextOverflow.ellipsis)),
+                Expanded(child: Text(order.address ?? l.byLocale(vi: "Không có địa chỉ", en: "No address"), style: TextStyle(fontSize: 12, color: isDark ? Colors.grey[300] : Colors.black87), overflow: TextOverflow.ellipsis)),
               ],
             ),
             const SizedBox(height: 8),
@@ -236,9 +245,9 @@ class _DeliveryManagementScreenState extends State<DeliveryManagementScreen> {
               children: [
                 const Icon(Icons.person_pin_outlined, size: 16, color: Colors.grey),
                 const SizedBox(width: 12),
-                Text('Shipper: ${order.shipperName ?? "Chưa chỉ định"}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                Text('${l.byLocale(vi: 'Tài xế', en: 'Shipper')}: ${order.shipperName ?? l.byLocale(vi: "Chưa chỉ định", en: "Unassigned")}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
                 const Spacer(),
-                const Text('Dự kiến: 15p', style: TextStyle(fontSize: 11, color: Colors.green, fontWeight: FontWeight.bold)),
+                Text('${l.byLocale(vi: 'Dự kiến', en: 'ETA')}: 15${l.byLocale(vi: 'p', en: 'm')}', style: const TextStyle(fontSize: 11, color: Colors.green, fontWeight: FontWeight.bold)),
               ],
             ),
             const SizedBox(height: 16),
@@ -265,13 +274,13 @@ class _DeliveryManagementScreenState extends State<DeliveryManagementScreen> {
                   TextButton.icon(
                     onPressed: () {},
                     icon: const Icon(Icons.phone_outlined, size: 16),
-                    label: const Text('Liên hệ', style: TextStyle(fontSize: 12)),
+                    label: Text(l.byLocale(vi: 'Liên hệ', en: 'Contact'), style: const TextStyle(fontSize: 12)),
                     style: TextButton.styleFrom(foregroundColor: Colors.teal),
                   ),
                 const SizedBox(width: 8),
                 TextButton(
                   onPressed: () {},
-                  child: const Text('Xem lộ trình', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.indigo)),
+                  child: Text(l.byLocale(vi: 'Xem lộ trình', en: 'Track Path'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.indigo)),
                 ),
               ],
             ),
@@ -296,12 +305,13 @@ class _DeliveryManagementScreenState extends State<DeliveryManagementScreen> {
   }
 
   Widget _buildSmallStatusBadge(String status) {
+    final l = AppLocalizations.of(context)!;
     Color color = Colors.grey;
     String text = status;
     final st = status.toUpperCase();
-    if (st == 'PICKING_UP') { color = Colors.orange; text = 'Chờ lấy'; }
-    if (st == 'DELIVERING') { color = Colors.blue; text = 'Đang giao'; }
-    if (['DELIVERED', 'COMPLETED', 'DONE'].contains(st)) { color = Colors.green; text = 'Hoàn tất'; }
+    if (st == 'PICKING_UP') { color = Colors.orange; text = l.translate('order_picking'); }
+    if (st == 'DELIVERING') { color = Colors.blue; text = l.translate('order_delivering'); }
+    if (['DELIVERED', 'COMPLETED', 'DONE'].contains(st)) { color = Colors.green; text = l.translate('order_delivered'); }
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),

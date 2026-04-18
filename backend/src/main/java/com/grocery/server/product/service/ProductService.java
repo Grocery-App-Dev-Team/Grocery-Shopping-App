@@ -251,12 +251,34 @@ public class ProductService {
      * Helper: Convert Product entity to ProductResponse DTO
      */
     private ProductResponse convertToResponse(Product product) {
+<<<<<<< Updated upstream
         List<ProductResponse.ProductUnitResponse> unitResponses = product.getUnits().stream()
                 .map(unit -> ProductResponse.ProductUnitResponse.builder()
                         .id(unit.getId())
                         .unitName(unit.getUnitName())
                         .price(unit.getPrice())
                         .stockQuantity(unit.getStockQuantity())
+=======
+        // Lấy danh sách productUnitMappings và chuyển đổi sang response
+        List<ProductUnitMapping> mappings = product.getProductUnitMappings();
+        if (mappings == null) {
+            mappings = new ArrayList<>();
+        }
+        
+        List<ProductResponse.ProductUnitResponse> unitResponses = mappings.stream()
+                .filter(mapping -> mapping != null && !Boolean.FALSE.equals(mapping.getIsActive()))
+                .map(mapping -> ProductResponse.ProductUnitResponse.builder()
+                        .id(mapping.getId())
+                    .unitCode(mapping.getUnit() != null ? mapping.getUnit().getCode() : null)
+                        .unitName(mapping.getUnitLabel() != null ? mapping.getUnitLabel() : 
+                                  (mapping.getUnit() != null ? mapping.getUnit().getName() : ""))
+                    .baseQuantity(mapping.getBaseQuantity())
+                    .baseUnit(mapping.getBaseUnit())
+                    .requiresQuantityInput(mapping.getUnit() != null
+                        && Boolean.TRUE.equals(mapping.getUnit().getRequiresQuantityInput()))
+                        .price(mapping.getPrice())
+                        .stockQuantity(mapping.getStockQuantity())
+>>>>>>> Stashed changes
                         .build())
                 .collect(Collectors.toList());
         

@@ -5,6 +5,7 @@ import '../../../../auth/bloc/auth_event.dart';
 import '../../../../auth/bloc/auth_state.dart';
 import '../../../../../core/utils/app_localizations.dart';
 import '../../../bloc/settings_bloc.dart';
+import '../../widgets/address_selection_2_dropdowns.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -111,14 +112,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         icon: Icons.person_outline,
                         color: Colors.blue,
                         title: l.translate('settings_personal'),
-                        subtitle: 'Họ tên, số điện thoại, vai trò',
+                        subtitle: l.byLocale(vi: 'Họ tên, địa chỉ, vai trò', en: 'Name, address, role'),
                         onTap: () => _showEditProfile(context, userName),
                       ),
                       _SettingsItem(
                         icon: Icons.lock_outline,
                         color: Colors.orange,
                         title: l.translate('settings_security'),
-                        subtitle: 'Thay đổi mã PIN hoặc mật khẩu',
+                        subtitle: l.byLocale(vi: 'Thay đổi mật khẩu', en: 'Change your password'),
                         onTap: () => _showChangePassword(context),
                       ),
                     ]),
@@ -128,8 +129,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         icon: Icons.notifications_none_outlined,
                         color: Colors.purple,
                         title: l.translate('settings_notifications'),
-                        subtitle: 'Quản lý thông báo đơn hàng mới',
-                          trailing: Switch(
+                        subtitle: l.byLocale(vi: 'Quản lý thông báo', en: 'Manage push notifications'),
+                        trailing: Switch(
                           value: _notificationsEnabled,
                           onChanged: (v) => setState(() => _notificationsEnabled = v),
                           activeThumbColor: Colors.indigo,
@@ -165,13 +166,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       _SettingsItem(
                         icon: Icons.description_outlined,
                         color: Colors.green,
-                        title: 'Điều khoản & Quy định',
+                        title: l.byLocale(vi: 'Điều khoản & Quy định', en: 'Terms & Conditions'),
                         onTap: () {},
                       ),
                       _SettingsItem(
                         icon: Icons.bug_report_outlined,
                         color: Colors.red,
-                        title: 'Báo cáo sự cố kỹ thuật',
+                        title: l.byLocale(vi: 'Báo cáo sự cố kỹ thuật', en: 'Report a Bug'),
                         onTap: () {},
                       ),
                     ]),
@@ -214,13 +215,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            TextField(
-              controller: _addressController,
-              decoration: InputDecoration(
-                labelText: 'Địa chỉ',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                prefixIcon: const Icon(Icons.location_on),
-              ),
+            const SizedBox(height: 16),
+            Text(l.byLocale(vi: 'Địa chỉ', en: 'Address'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
+            const SizedBox(height: 8),
+            AddressSelection2Dropdowns(
+              initialValue: _addressController.text,
+              onAddressChanged: (full) {
+                _addressController.text = full;
+              },
             ),
             const SizedBox(height: 24),
             ElevatedButton(
@@ -249,86 +251,122 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showChangePassword(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     _oldPassController.clear();
     _newPassController.clear();
     _confirmPassController.clear();
 
+    bool showOld = false;
+    bool showNew = false;
+    bool showConfirm = false;
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Đổi mật khẩu', style: TextStyle(fontWeight: FontWeight.bold)),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: _oldPassController,
-                obscureText: true,
-                decoration: InputDecoration(
-                  labelText: 'Mật khẩu cũ',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  prefixIcon: const Icon(Icons.lock_open),
-                ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final newP = _newPassController.text;
+          final confirmP = _confirmPassController.text;
+          
+          String? newPassError;
+          if (newP.isNotEmpty && newP.length < 6) {
+            newPassError = l.translate('password_length_error');
+          }
+          
+          String? confirmPassError;
+          if (confirmP.isNotEmpty && newP != confirmP) {
+            confirmPassError = l.translate('password_mismatch');
+          }
+
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Text(l.translate('settings_security'), style: const TextStyle(fontWeight: FontWeight.bold)),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: _oldPassController,
+                    obscureText: !showOld,
+                    decoration: InputDecoration(
+                      labelText: l.byLocale(vi: 'Mật khẩu cũ', en: 'Old Password'),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      prefixIcon: const Icon(Icons.lock_open),
+                      suffixIcon: IconButton(
+                        icon: Icon(showOld ? Icons.visibility : Icons.visibility_off, size: 20),
+                        onPressed: () => setDialogState(() => showOld = !showOld),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _newPassController,
+                    obscureText: !showNew,
+                    onChanged: (v) => setDialogState(() {}),
+                    decoration: InputDecoration(
+                      labelText: l.byLocale(vi: 'Mật khẩu mới', en: 'New Password'),
+                      errorText: newPassError,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      prefixIcon: const Icon(Icons.lock_outline),
+                      suffixIcon: IconButton(
+                        icon: Icon(showNew ? Icons.visibility : Icons.visibility_off, size: 20),
+                        onPressed: () => setDialogState(() => showNew = !showNew),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _confirmPassController,
+                    obscureText: !showConfirm,
+                    onChanged: (v) => setDialogState(() {}),
+                    decoration: InputDecoration(
+                      labelText: l.byLocale(vi: 'Xác nhận mật khẩu mới', en: 'Confirm New Password'),
+                      errorText: confirmPassError,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      prefixIcon: const Icon(Icons.check_circle_outline),
+                      suffixIcon: IconButton(
+                        icon: Icon(showConfirm ? Icons.visibility : Icons.visibility_off, size: 20),
+                        onPressed: () => setDialogState(() => showConfirm = !showConfirm),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _newPassController,
-                obscureText: true,
-                decoration: InputDecoration(
-                  labelText: 'Mật khẩu mới',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  prefixIcon: const Icon(Icons.lock_outline),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context), child: Text(l.translate('all').toUpperCase(), style: const TextStyle(color: Colors.grey))),
+              ElevatedButton(
+                onPressed: (newPassError != null || confirmPassError != null) 
+                  ? null 
+                  : () {
+                  final oldP = _oldPassController.text;
+                  final newPVal = _newPassController.text;
+                  final confirmPVal = _confirmPassController.text;
+
+                  if (oldP.isEmpty || newPVal.isEmpty || confirmPVal.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l.translate('fill_all_fields'))));
+                    return;
+                  }
+                  if (newPVal == oldP) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l.translate('password_same_as_old'))));
+                    return;
+                  }
+
+                  context.read<AuthBloc>().add(ChangePasswordRequested(
+                    oldPassword: oldP,
+                    newPassword: newPVal,
+                    confirmPassword: confirmPVal,
+                  ));
+                  Navigator.pop(context);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.indigo,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _confirmPassController,
-                obscureText: true,
-                decoration: InputDecoration(
-                  labelText: 'Xác nhận mật khẩu',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  prefixIcon: const Icon(Icons.check_circle_outline),
-                ),
+                child: Text(l.translate('save_changes'), style: const TextStyle(color: Colors.white)),
               ),
             ],
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('HỦY', style: TextStyle(color: Colors.grey))),
-          ElevatedButton(
-            onPressed: () {
-              final oldP = _oldPassController.text;
-              final newP = _newPassController.text;
-              final confirmP = _confirmPassController.text;
-
-              if (oldP.isEmpty || newP.isEmpty || confirmP.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Vui lòng nhập đầy đủ thông tin')));
-                return;
-              }
-              if (newP != confirmP) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mật khẩu xác nhận không khớp')));
-                return;
-              }
-              if (newP.length < 6) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mật khẩu mới phải có ít nhất 6 ký tự')));
-                return;
-              }
-
-              context.read<AuthBloc>().add(ChangePasswordRequested(
-                oldPassword: oldP,
-                newPassword: newP,
-                confirmPassword: confirmP,
-              ));
-              Navigator.pop(context);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.indigo,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-            child: const Text('THAY ĐỔI', style: TextStyle(color: Colors.white)),
-          ),
-        ],
+          );
+        },
       ),
     );
   }

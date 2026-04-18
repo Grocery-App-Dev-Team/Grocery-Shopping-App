@@ -5,6 +5,8 @@ import 'package:grocery_shopping_app/features/admin/domain/repositories/store_re
 import 'package:grocery_shopping_app/features/admin/data/repositories/api_store_repository_impl.dart';
 import 'package:grocery_shopping_app/core/utils/export_service.dart';
 import 'package:grocery_shopping_app/features/orders/data/order_service.dart';
+import 'package:grocery_shopping_app/core/utils/app_localizations.dart';
+import '../../widgets/address_selection_2_dropdowns.dart';
 
 class StoreManagementScreen extends StatefulWidget {
   const StoreManagementScreen({super.key});
@@ -32,15 +34,11 @@ class _StoreManagementScreenState extends State<StoreManagementScreen> {
     setState(() => _isLoadingRevenue = true);
     
     try {
-      // getAllOrdersAdmin giờ đây đã an toàn (không gây 403 UI)
       final orders = await _orderService.getAllOrdersAdmin();
-      
-      debugPrint('📊 StoreManagement: Đã tải được ${orders.length} đơn hàng qua cơ chế khám phá.');
       
       final Map<String, double> revenueMap = {};
       for (var o in orders) {
         final status = (o.status ?? '').toUpperCase();
-        // Tính doanh thu dựa trên các đơn hàng không bị hủy
         if (status != 'CANCELLED') {
            final sId = o.storeId?.toString() ?? 'unknown';
            revenueMap[sId] = (revenueMap[sId] ?? 0) + (o.totalAmount ?? 0).toDouble();
@@ -53,7 +51,6 @@ class _StoreManagementScreenState extends State<StoreManagementScreen> {
         _isLoadingRevenue = false;
       });
     } catch (e) {
-      debugPrint('⚠️ Error loading store revenue (Handled): $e');
       if (mounted) setState(() => _isLoadingRevenue = false);
     }
   }
@@ -64,6 +61,7 @@ class _StoreManagementScreenState extends State<StoreManagementScreen> {
   }
 
   void _showAddStoreDialog() {
+    final l = AppLocalizations.of(context)!;
     final formKey = GlobalKey<FormState>();
     String name = '';
     String ownerName = '';
@@ -76,7 +74,7 @@ class _StoreManagementScreenState extends State<StoreManagementScreen> {
       builder: (context) {
         return AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text('Thêm cửa hàng mới', style: TextStyle(fontWeight: FontWeight.bold)),
+          title: Text(l.translate('add'), style: const TextStyle(fontWeight: FontWeight.bold)),
           content: Form(
             key: formKey,
             child: SingleChildScrollView(
@@ -84,42 +82,43 @@ class _StoreManagementScreenState extends State<StoreManagementScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   TextFormField(
-                    decoration: _inputDecoration('Tên cửa hàng', Icons.store_outlined),
+                    decoration: _inputDecoration(l.translate('nav_stores'), Icons.store_outlined),
                     validator: (v) => v!.isEmpty ? 'Không được để trống' : null,
                     onSaved: (v) => name = v!,
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
-                    decoration: _inputDecoration('Họ tên chủ cửa hàng', Icons.person_outline),
+                    decoration: _inputDecoration(l.translate('full_name'), Icons.person_outline),
                     validator: (v) => v!.isEmpty ? 'Không được để trống' : null,
                     onSaved: (v) => ownerName = v!,
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
-                    decoration: _inputDecoration('Số điện thoại', Icons.phone_android_outlined),
+                    decoration: _inputDecoration(l.translate('contact_phone'), Icons.phone_android_outlined),
                     keyboardType: TextInputType.phone,
                     validator: (v) => (v == null || !RegExp(r'^0\d{9}$').hasMatch(v)) ? 'SĐT không hợp lệ' : null,
                     onSaved: (v) => phone = v!,
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
-                    decoration: _inputDecoration('Mật khẩu', Icons.lock_outline),
+                    decoration: _inputDecoration(l.translate('password_hint'), Icons.lock_outline),
                     obscureText: true,
                     validator: (v) => v!.isEmpty || v.length < 6 ? 'Mật khẩu tối thiểu 6 ký tự' : null,
                     onSaved: (v) => password = v!,
                   ),
                   const SizedBox(height: 12),
-                  TextFormField(
-                    decoration: _inputDecoration('Địa chỉ', Icons.location_on_outlined),
-                    validator: (v) => v!.isEmpty ? 'Không được để trống' : null,
-                    onSaved: (v) => address = v!,
+                  const SizedBox(height: 12),
+                  Text(l.byLocale(vi: 'Địa chỉ', en: 'Address'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
+                  const SizedBox(height: 8),
+                  AddressSelection2Dropdowns(
+                    onAddressChanged: (val) => address = val,
                   ),
                 ],
               ),
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Hủy')),
+            TextButton(onPressed: () => Navigator.pop(context), child: Text(l.translate('cancel'))),
             ElevatedButton(
               onPressed: () async {
                 if (formKey.currentState!.validate()) {
@@ -135,15 +134,14 @@ class _StoreManagementScreenState extends State<StoreManagementScreen> {
                     if (context.mounted) {
                       Navigator.pop(context);
                       if (mounted) setState(() {});
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Đã thêm cửa hàng thành công')));
                     }
                   } catch (e) {
-                    if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
+                    if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi: ${e.toString().replaceAll('Exception: ', '')}')));
                   }
                 }
               },
               style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo, foregroundColor: Colors.white),
-              child: const Text('Thêm'),
+              child: Text(l.translate('add')),
             ),
           ],
         );
@@ -152,28 +150,37 @@ class _StoreManagementScreenState extends State<StoreManagementScreen> {
   }
 
   InputDecoration _inputDecoration(String label, IconData icon) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return InputDecoration(
       labelText: label,
+      labelStyle: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey[600]),
       prefixIcon: Icon(icon, size: 20),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      filled: true,
+      fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey[100],
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.indigo, width: 2)),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
-        title: const Text('Quản lý Cửa hàng', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
+        title: Text(l.translate('mgmt_stores'), style: const TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
+        foregroundColor: Theme.of(context).appBarTheme.foregroundColor,
         elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.file_download_outlined, color: Colors.indigo),
-            onPressed: _exportStores,
-            tooltip: 'Xuất Excel',
+            onPressed: () => _exportStores(l),
+            tooltip: 'Export CSV',
           ),
           const SizedBox(width: 8),
         ],
@@ -183,10 +190,10 @@ class _StoreManagementScreenState extends State<StoreManagementScreen> {
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
             child: TextField(
               decoration: InputDecoration(
-                hintText: 'Tìm kiếm theo tên hoặc địa chỉ...',
+                hintText: l.translate('search_hint'),
                 prefixIcon: const Icon(Icons.search, color: Colors.grey),
                 filled: true,
-                fillColor: const Color(0xFFF0F2F5),
+                fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFF0F2F5),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
                 contentPadding: const EdgeInsets.symmetric(vertical: 0),
               ),
@@ -200,11 +207,11 @@ class _StoreManagementScreenState extends State<StoreManagementScreen> {
         backgroundColor: Colors.indigo,
         child: const Icon(Icons.add_business, color: Colors.white),
       ),
-      body: _buildStoreList(),
+      body: _buildStoreList(l),
     );
   }
 
-  Widget _buildStoreList() {
+  Widget _buildStoreList(AppLocalizations l) {
     return FutureBuilder<List<Map<String, dynamic>>>(
       future: _storeRepository.getStores(),
       builder: (context, snapshot) {
@@ -221,7 +228,7 @@ class _StoreManagementScreenState extends State<StoreManagementScreen> {
         }).toList();
 
         if (filteredStores.isEmpty) {
-          return _buildEmptyState();
+          return _buildEmptyState(l);
         }
 
         return RefreshIndicator(
@@ -234,9 +241,8 @@ class _StoreManagementScreenState extends State<StoreManagementScreen> {
             itemCount: filteredStores.length,
             itemBuilder: (context, index) {
               final store = filteredStores[index];
-              // Assuming 'isOpen' or 'status' field indicates if approval is needed
               final bool isPending = store['isOpen'] == 'pending' || store['status'] == 'PENDING';
-              return _buildStoreCard(store, isPending);
+              return _buildStoreCard(store, isPending, l);
             },
           ),
         );
@@ -244,14 +250,14 @@ class _StoreManagementScreenState extends State<StoreManagementScreen> {
     );
   }
 
-  Widget _buildStoreCard(Map<String, dynamic> store, bool isPending) {
+  Widget _buildStoreCard(Map<String, dynamic> store, bool isPending, AppLocalizations l) {
     final sId = store['id']?.toString() ?? store['storeName']?.toString() ?? '';
     final double revenue = _storeRevenueMap[sId] ?? (store['totalRevenue'] as num?)?.toDouble() ?? 0.0;
     
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4))],
       ),
@@ -269,7 +275,7 @@ class _StoreManagementScreenState extends State<StoreManagementScreen> {
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
-                      color: Colors.indigo[50],
+                      color: Colors.indigo.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                       image: store['imageUrl'] != null && store['imageUrl'].toString().isNotEmpty
                           ? DecorationImage(
@@ -287,12 +293,12 @@ class _StoreManagementScreenState extends State<StoreManagementScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(store['storeName'] ?? 'Cửa hàng ẩn', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                        Text('Chủ CH: ${store['ownerName'] ?? 'N/A'}', style: TextStyle(color: Colors.grey[600], fontSize: 13)),
+                        Text(store['storeName'] ?? 'Cửa hàng', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        Text('Owner: ${store['ownerName'] ?? 'N/A'}', style: TextStyle(color: Colors.grey[600], fontSize: 13)),
                       ],
                     ),
                   ),
-                  _buildStatusBadge(store['isOpen']),
+                  _buildStatusBadge(store['isOpen'], l),
                 ],
               ),
               const Divider(height: 24),
@@ -310,7 +316,7 @@ class _StoreManagementScreenState extends State<StoreManagementScreen> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Tổng doanh thu', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                      Text(l.translate('revenue'), style: const TextStyle(fontSize: 11, color: Colors.grey)),
                       Text(_currencyFormat.format(revenue), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.indigo)),
                     ],
                   ),
@@ -324,7 +330,7 @@ class _StoreManagementScreenState extends State<StoreManagementScreen> {
     );
   }
 
-  Widget _buildStatusBadge(dynamic isOpen) {
+  Widget _buildStatusBadge(dynamic isOpen, AppLocalizations l) {
     final bool active = isOpen == true;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -332,7 +338,7 @@ class _StoreManagementScreenState extends State<StoreManagementScreen> {
         color: active ? Colors.green.withValues(alpha: 0.1) : Colors.red.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Text(active ? 'Mở cửa' : 'Đóng cửa', style: TextStyle(color: active ? Colors.green[700] : Colors.red[700], fontSize: 11, fontWeight: FontWeight.bold)),
+      child: Text(active ? l.translate('active') : l.translate('inactive'), style: TextStyle(color: active ? Colors.green[700] : Colors.red[700], fontSize: 11, fontWeight: FontWeight.bold)),
     );
   }
 
@@ -357,17 +363,17 @@ class _StoreManagementScreenState extends State<StoreManagementScreen> {
     );
   }
 
-  void _exportStores() async {
+  void _exportStores(AppLocalizations l) async {
     try {
       final List<Map<String, dynamic>> allStores = await _storeRepository.getStores();
       
       final exportData = allStores.map((s) => {
         'ID': s['id'],
-        'Tên cửa hàng': s['storeName'],
-        'Chủ cửa hàng': s['ownerName'],
-        'Địa chỉ': s['address'],
-        'Doanh thu': _currencyFormat.format(s['totalRevenue'] ?? 0),
-        'Trạng thái': s['isOpen'] == true ? 'Mở cửa' : 'Đóng cửa',
+        'Name': s['storeName'],
+        'Owner': s['ownerName'],
+        'Address': s['address'],
+        'Revenue': _currencyFormat.format(s['totalRevenue'] ?? 0),
+        'Status': s['isOpen'] == true ? l.translate('active') : l.translate('inactive'),
       }).toList();
 
       if (mounted) {
@@ -379,19 +385,19 @@ class _StoreManagementScreenState extends State<StoreManagementScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi xuất dữ liệu: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi xuất dữ liệu: ${e.toString().replaceAll('Exception: ', '')}')));
       }
     }
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(AppLocalizations l) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.store_outlined, size: 64, color: Colors.grey[300]),
           const SizedBox(height: 16),
-          Text('Không tìm thấy cửa hàng', style: TextStyle(color: Colors.grey[600], fontSize: 16)),
+          Text(l.translate('no_data'), style: TextStyle(color: Colors.grey[600], fontSize: 16)),
         ],
       ),
     );

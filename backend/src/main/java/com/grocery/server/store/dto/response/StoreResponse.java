@@ -20,6 +20,7 @@ public class StoreResponse {
     private Long ownerId;
     private String ownerName;
     private String ownerPhone;
+    private String storePhone;
     private String storeName;
     private String address;
     private Boolean isOpen;
@@ -34,6 +35,7 @@ public class StoreResponse {
                 .ownerId(store.getOwner().getId())
                 .ownerName(store.getOwner().getFullName())
                 .ownerPhone(store.getOwner().getPhoneNumber())
+                .storePhone(store.getPhoneNumber())
                 .storeName(store.getStoreName())
                 .address(store.getAddress())
                 .isOpen(store.getIsOpen())

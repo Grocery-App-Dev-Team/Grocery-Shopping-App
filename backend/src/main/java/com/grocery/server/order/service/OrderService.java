@@ -23,8 +23,12 @@ import com.grocery.server.user.entity.User;
 import com.grocery.server.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.*;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.grocery.server.order.entity.OrderSpecification;
+import com.grocery.server.shared.dto.PageResponse;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -90,42 +94,85 @@ public class OrderService {
                 .build();
 
         for (var itemRequest : request.getItems()) {
+<<<<<<< Updated upstream
             // Validate ProductUnit
             ProductUnit productUnit = productRepository.findProductUnitById(itemRequest.getProductUnitId())
                     .orElseThrow(() -> new ResourceNotFoundException(
                             "Không tìm thấy đơn vị sản phẩm ID: " + itemRequest.getProductUnitId()));
+=======
+            BigDecimal requestedQuantity = itemRequest.getQuantity();
+
+            // Validate ProductUnitMapping
+            ProductUnitMapping productUnitMapping = productRepository
+                    .findProductUnitMappingById(itemRequest.getProductUnitMappingId())
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Không tìm thấy biến thể sản phẩm ID: " + itemRequest.getProductUnitMappingId()));
+>>>>>>> Stashed changes
 
             // Kiểm tra sản phẩm có thuộc cửa hàng này không
             if (!productUnit.getProduct().getStore().getId().equals(request.getStoreId())) {
                 throw new BadRequestException(
+<<<<<<< Updated upstream
                         "Sản phẩm '" + productUnit.getProduct().getName() + "' không thuộc cửa hàng này");
+=======
+                        "Sản phẩm '" + productUnitMapping.getProduct().getName() + "' không thuộc cửa hàng này");
+>>>>>>> Stashed changes
             }
 
             // Kiểm tra tồn kho
             if (productUnit.getStockQuantity() < itemRequest.getQuantity()) {
                 throw new BadRequestException(
+<<<<<<< Updated upstream
                         "Sản phẩm '" + productUnit.getProduct().getName() + " - " + productUnit.getUnitName() +
                                 "' chỉ còn " + productUnit.getStockQuantity() + " (yêu cầu: "
                                 + itemRequest.getQuantity() + ")");
+=======
+                        "Sản phẩm '" + productUnitMapping.getProduct().getName() + " - "
+                                + productUnitMapping.getDisplayUnitName() +
+                                "' chỉ còn " + productUnitMapping.getStockQuantity() + " (yêu cầu: " + requestedQuantity
+                                + ")");
+            }
+
+            int deductedStock;
+            try {
+                deductedStock = requestedQuantity.intValueExact();
+            } catch (ArithmeticException ex) {
+                throw new BadRequestException(
+                        "Số lượng đặt cho biến thể phải là số nguyên do tồn kho hiện được quản lý theo đơn vị nguyên");
+>>>>>>> Stashed changes
             }
 
             // Tạo OrderItem
             OrderItem orderItem = OrderItem.builder()
                     .order(order)
+<<<<<<< Updated upstream
                     .productUnit(productUnit)
                     .quantity(itemRequest.getQuantity())
                     .unitPrice(productUnit.getPrice())
+=======
+                    .productUnitMapping(productUnitMapping)
+                    .quantity(requestedQuantity)
+                    .unitPrice(productUnitMapping.getPrice())
+>>>>>>> Stashed changes
                     .build();
 
             orderItems.add(orderItem);
             totalAmount = totalAmount.add(orderItem.getSubtotal());
 
             // Trừ tồn kho
+<<<<<<< Updated upstream
             productUnit.setStockQuantity(productUnit.getStockQuantity() - itemRequest.getQuantity());
             log.info("Trừ {} sản phẩm '{}', còn lại: {}",
                     itemRequest.getQuantity(),
                     productUnit.getProduct().getName(),
                     productUnit.getStockQuantity());
+=======
+            productUnitMapping.setStockQuantity(productUnitMapping.getStockQuantity() - deductedStock);
+            log.info("Trừ {} sản phẩm '{}', còn lại: {}",
+                    requestedQuantity,
+                    productUnitMapping.getProduct().getName(),
+                    productUnitMapping.getStockQuantity());
+>>>>>>> Stashed changes
         }
 
         order.setTotalAmount(totalAmount);
@@ -228,6 +275,47 @@ public class OrderService {
     }
 
     /**
+     * Lấy tất cả đơn hàng cho Admin (với phân trang và lọc)
+     * 
+     * @param page    Số trang
+     * @param size    Số phần tử mỗi trang
+     * @param sortBy  Trường sắp xếp
+     * @param sortDir Hướng sắp xếp (asc/desc)
+     * @param storeId Lọc theo cửa hàng
+     * @param status  Lọc theo trạng thái
+     * @param from    Lọc từ ngày
+     * @param to      Lọc đến ngày
+     * @return PageResponse chứa danh sách đơn hàng
+     */
+    public PageResponse<OrderResponse> getAllOrdersAdmin(
+            int page, int size, String sortBy, String sortDir,
+            Long storeId, Long customerId, Long shipperId,
+            OrderStatus status, LocalDateTime from, LocalDateTime to) {
+
+        log.info("Admin fetching all orders with filters - page: {}, size: {}, sortBy: {}, sortDir: {}, storeId: {}, customerId: {}, shipperId: {}, status: {}, from: {}, to: {}",
+                page, size, sortBy, sortDir, storeId, customerId, shipperId, status, from, to);
+
+        Sort sort = sortDir.equalsIgnoreCase("asc") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        Specification<Order> spec = Specification.where(null);
+        if (storeId != null) spec = spec.and(OrderSpecification.hasStoreId(storeId));
+        if (customerId != null) spec = spec.and(OrderSpecification.hasCustomerId(customerId));
+        if (shipperId != null) spec = spec.and(OrderSpecification.hasShipperId(shipperId));
+        if (status != null) spec = spec.and(OrderSpecification.hasStatus(status));
+        if (from != null) spec = spec.and(OrderSpecification.createdAfter(from));
+        if (to != null) spec = spec.and(OrderSpecification.createdBefore(to));
+
+        Page<Order> orderPage = orderRepository.findAll(spec, pageable);
+
+        List<OrderResponse> content = orderPage.getContent().stream()
+                .map(this::mapToOrderResponse)
+                .collect(Collectors.toList());
+
+        return PageResponse.fromPage(orderPage, content);
+    }
+
+    /**
      * Cập nhật trạng thái đơn hàng
      * 
      * @param orderId ID đơn hàng
@@ -314,65 +402,65 @@ public class OrderService {
         return mapToOrderResponse(order);
     }
 
-        private void publishOrderCreatedEvent(Order order) {
+    private void publishOrderCreatedEvent(Order order) {
         OrderCreatedEvent event = OrderCreatedEvent.builder()
-            .eventType("ORDER_CREATED")
-            .timestamp(System.currentTimeMillis())
-            .orderId(order.getId())
-            .customerId(order.getCustomer().getId())
-            .storeId(order.getStore().getId())
-            .storeName(order.getStore().getStoreName())
-            .totalAmount(order.getTotalAmount())
-            .shippingFee(order.getShippingFee())
-            .deliveryAddress(order.getDeliveryAddress())
-            .deliveryLat(null)
-            .deliveryLng(null)
-            .createdAt(order.getCreatedAt())
-            .expiresAt(order.getCreatedAt() != null
-                ? order.getCreatedAt().plusMinutes(15)
-                : LocalDateTime.now().plusMinutes(15))
-            .build();
+                .eventType("ORDER_CREATED")
+                .timestamp(System.currentTimeMillis())
+                .orderId(order.getId())
+                .customerId(order.getCustomer().getId())
+                .storeId(order.getStore().getId())
+                .storeName(order.getStore().getStoreName())
+                .totalAmount(order.getTotalAmount())
+                .shippingFee(order.getShippingFee())
+                .deliveryAddress(order.getDeliveryAddress())
+                .deliveryLat(null)
+                .deliveryLng(null)
+                .createdAt(order.getCreatedAt())
+                .expiresAt(order.getCreatedAt() != null
+                        ? order.getCreatedAt().plusMinutes(15)
+                        : LocalDateTime.now().plusMinutes(15))
+                .build();
 
         messagePublisher.publishOrderEvent("created", order.getId(), event);
-        }
+    }
 
-        private void publishOrderAcceptedEvent(Order order, User shipper) {
+    private void publishOrderAcceptedEvent(Order order, User shipper) {
         OrderAcceptedEvent event = OrderAcceptedEvent.builder()
-            .eventType("ORDER_ACCEPTED")
-            .timestamp(System.currentTimeMillis())
-            .orderId(order.getId())
-            .customerId(order.getCustomer().getId())
-            .storeId(order.getStore().getId())
-            .shipperId(shipper.getId())
-            .shipperName(shipper.getFullName())
-            .shipperPhone(shipper.getPhoneNumber())
-            .acceptedAt(LocalDateTime.now())
-            .build();
+                .eventType("ORDER_ACCEPTED")
+                .timestamp(System.currentTimeMillis())
+                .orderId(order.getId())
+                .customerId(order.getCustomer().getId())
+                .storeId(order.getStore().getId())
+                .shipperId(shipper.getId())
+                .shipperName(shipper.getFullName())
+                .shipperPhone(shipper.getPhoneNumber())
+                .acceptedAt(LocalDateTime.now())
+                .build();
 
         messagePublisher.publishOrderEvent("accepted", order.getId(), event);
-        }
+    }
 
-        private void publishOrderStatusChangedEvent(
+    private void publishOrderStatusChangedEvent(
             Order order,
             OrderStatus oldStatus,
             OrderStatus newStatus,
             String reason) {
         OrderStatusChangedEvent event = OrderStatusChangedEvent.builder()
-            .eventType("ORDER_STATUS_CHANGED")
-            .timestamp(System.currentTimeMillis())
-            .orderId(order.getId())
-            .customerId(order.getCustomer().getId())
-            .storeId(order.getStore().getId())
-            .shipperId(order.getShipper() != null ? order.getShipper().getId() : null)
-            .oldStatus(oldStatus)
-            .newStatus(newStatus)
-            .statusDescription(newStatus.name())
-            .changedAt(LocalDateTime.now())
-            .reason(reason)
-            .build();
+                .eventType("ORDER_STATUS_CHANGED")
+                .timestamp(System.currentTimeMillis())
+                .orderId(order.getId())
+                .customerId(order.getCustomer().getId())
+                .storeId(order.getStore().getId())
+                .shipperId(order.getShipper() != null ? order.getShipper().getId() : null)
+                .oldStatus(oldStatus)
+                .newStatus(newStatus)
+                .statusDescription(newStatus.name())
+                .changedAt(LocalDateTime.now())
+                .reason(reason)
+                .build();
 
         messagePublisher.publishOrderEvent("status", order.getId(), event);
-        }
+    }
 
     /**
      * Validate chuyển trạng thái có hợp lệ không
@@ -471,6 +559,7 @@ public class OrderService {
      */
     private OrderResponse mapToOrderResponse(Order order) {
         List<OrderItemResponse> items = order.getOrderItems().stream()
+<<<<<<< Updated upstream
                 .map(item -> OrderItemResponse.builder()
                         .id(item.getId())
                         .productId(item.getProductUnit().getProduct().getId())
@@ -481,6 +570,39 @@ public class OrderService {
                         .quantity(item.getQuantity())
                         .subtotal(item.getSubtotal())
                         .build())
+=======
+                .map(item -> {
+                    Long productId = null;
+                    String productName = "Sản phẩm không khả dụng";
+                    String productImageUrl = null;
+                    String unitName = "N/A";
+
+                    try {
+                        ProductUnitMapping mapping = item.getProductUnitMapping();
+                        if (mapping != null) {
+                            unitName = mapping.getDisplayUnitName();
+                            if (mapping.getProduct() != null) {
+                                productId = mapping.getProduct().getId();
+                                productName = mapping.getProduct().getName();
+                                productImageUrl = mapping.getProduct().getImageUrl();
+                            }
+                        }
+                    } catch (Exception e) {
+                        log.error("Lỗi khi lấy thông tin sản phẩm cho OrderItem {}: {}", item.getId(), e.getMessage());
+                    }
+
+                    return OrderItemResponse.builder()
+                            .id(item.getId())
+                            .productId(productId)
+                            .productName(productName)
+                            .productImageUrl(productImageUrl)
+                            .unitName(unitName)
+                            .unitPrice(item.getUnitPrice())
+                            .quantity(item.getQuantity())
+                            .subtotal(item.getSubtotal())
+                            .build();
+                })
+>>>>>>> Stashed changes
                 .collect(Collectors.toList());
 
         return OrderResponse.builder()

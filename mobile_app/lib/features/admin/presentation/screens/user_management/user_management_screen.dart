@@ -6,6 +6,7 @@ import 'package:grocery_shopping_app/features/admin/presentation/widgets/user_li
 import 'package:grocery_shopping_app/features/admin/presentation/screens/user_management/user_detail_screen.dart';
 import 'package:grocery_shopping_app/core/utils/export_service.dart';
 import 'package:intl/intl.dart';
+import 'package:grocery_shopping_app/core/utils/app_localizations.dart';
 
 class UserManagementScreen extends StatefulWidget {
   final UserRole? initialRole;
@@ -43,6 +44,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> with Single
   }
 
   void _showAddUserDialog() {
+    final l = AppLocalizations.of(context)!;
     final formKey = GlobalKey<FormState>();
     String fullName = '';
     String phoneNumber = '';
@@ -56,7 +58,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> with Single
           builder: (context, setDialogState) {
             return AlertDialog(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              title: const Text('Thêm người dùng mới', style: TextStyle(fontWeight: FontWeight.bold)),
+              title: Text(l.translate('add'), style: const TextStyle(fontWeight: FontWeight.bold)),
               content: Form(
                 key: formKey,
                 child: SingleChildScrollView(
@@ -64,36 +66,44 @@ class _UserManagementScreenState extends State<UserManagementScreen> with Single
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       TextFormField(
-                        decoration: _inputDecoration('Họ và tên', Icons.person_outline),
-                        validator: (v) => v!.isEmpty ? 'Vui lòng nhập tên' : null,
-                        onSaved: (v) => fullName = v!,
+                        decoration: _inputDecoration(l.translate('full_name'), Icons.person_outline),
+                        validator: (v) {
+                          if (v == null || v.trim().isEmpty) return l.byLocale(vi: 'Vui lòng nhập họ và tên', en: 'Please enter full name');
+                          if (v.trim().length < 3) return l.byLocale(vi: 'Họ và tên phải có ít nhất 3 ký tự', en: 'Name must be at least 3 chars');
+                          return null;
+                        },
+                        onSaved: (v) => fullName = v!.trim(),
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
-                        decoration: _inputDecoration('Số điện thoại', Icons.phone_android_outlined),
+                        decoration: _inputDecoration(l.translate('contact_phone'), Icons.phone_android_outlined),
                         keyboardType: TextInputType.phone,
                         validator: (v) {
-                          if (v == null || v.isEmpty) return 'Vui lòng nhập SĐT';
-                          if (!RegExp(r'^0\d{9}$').hasMatch(v)) return 'SĐT không hợp lệ';
+                          if (v == null || v.isEmpty) return l.byLocale(vi: 'Vui lòng nhập SĐT', en: 'Please enter phone');
+                          if (!RegExp(r'^0\d{9}$').hasMatch(v)) return l.byLocale(vi: 'SĐT không hợp lệ', en: 'Invalid phone');
                           return null;
                         },
                         onSaved: (v) => phoneNumber = v!,
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
-                        decoration: _inputDecoration('Mật khẩu', Icons.lock_outline),
+                        decoration: _inputDecoration(l.translate('password_hint'), Icons.lock_outline),
                         obscureText: true,
-                        validator: (v) => v!.isEmpty ? 'Vui lòng nhập mật khẩu' : null,
+                        validator: (v) {
+                          if (v == null || v.isEmpty) return l.byLocale(vi: 'Vui lòng nhập mật khẩu', en: 'Please enter password');
+                          if (v.length < 6) return l.byLocale(vi: 'Mật khẩu phải từ 6 ký tự trở lên', en: 'Password must be at least 6 chars');
+                          return null;
+                        },
                         onSaved: (v) => password = v!,
                       ),
                       const SizedBox(height: 16),
                       DropdownButtonFormField<UserRole>(
                         initialValue: selectedRole,
-                        decoration: _inputDecoration('Vai trò', Icons.shield_outlined),
+                        decoration: _inputDecoration(l.translate('detail_user').split(' ')[1], Icons.shield_outlined),
                         items: UserRole.values.map((role) {
                           return DropdownMenuItem(
                             value: role,
-                            child: Text(role.name.toUpperCase()),
+                            child: Text(_getRoleDisplayName(role, l)),
                           );
                         }).toList(),
                         onChanged: (val) => setDialogState(() => selectedRole = val!),
@@ -103,7 +113,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> with Single
                 ),
               ),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Hủy')),
+                TextButton(onPressed: () => Navigator.pop(context), child: Text(l.translate('cancel'))),
                 ElevatedButton(
                   onPressed: () async {
                     if (formKey.currentState!.validate()) {
@@ -125,7 +135,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> with Single
                     }
                   },
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo, foregroundColor: Colors.white),
-                  child: const Text('Thêm'),
+                  child: Text(l.translate('add')),
                 ),
               ],
             );
@@ -136,46 +146,56 @@ class _UserManagementScreenState extends State<UserManagementScreen> with Single
   }
 
   InputDecoration _inputDecoration(String label, IconData icon) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return InputDecoration(
       labelText: label,
       prefixIcon: Icon(icon, size: 20),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      labelStyle: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey[600]),
+      filled: true,
+      fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey[100],
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.indigo, width: 2)),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
-        title: const Text('Quản lý Người dùng', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
+        title: Text(l.translate('mgmt_users'), style: const TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
+        foregroundColor: Theme.of(context).appBarTheme.foregroundColor,
         elevation: 0,
         actions: [
-          IconButton(
-            icon: Icon(_statusFilter == null ? Icons.filter_list : Icons.filter_list_off, color: Colors.indigo),
-            onPressed: () {
-              setState(() {
-                if (_statusFilter == null) {
-                  _statusFilter = UserStatus.active;
-                } else if (_statusFilter == UserStatus.active) {
-                  _statusFilter = UserStatus.inactive;
-                } else {
-                  _statusFilter = null;
-                }
-              });
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                content: Text(_statusFilter == null ? 'Hiển thị tất cả' : 'Lọc: ${_statusFilter == UserStatus.active ? 'Hoạt động' : 'Đã khóa'}'),
-                duration: const Duration(seconds: 1),
-              ));
-            },
+          Container(
+            margin: const EdgeInsets.symmetric(vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            decoration: BoxDecoration(
+              color: Colors.indigo.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<UserStatus?>(
+                value: _statusFilter,
+                icon: const Icon(Icons.arrow_drop_down, color: Colors.indigo),
+                hint: Text(l.translate('status'), style: const TextStyle(fontSize: 12, color: Colors.indigo)),
+                items: [
+                  DropdownMenuItem(value: null, child: Text(l.translate('all'), style: const TextStyle(fontSize: 12))),
+                  DropdownMenuItem(value: UserStatus.active, child: Text(l.translate('active'), style: const TextStyle(fontSize: 12))),
+                  DropdownMenuItem(value: UserStatus.inactive, child: Text(l.translate('inactive'), style: const TextStyle(fontSize: 12))),
+                ],
+                onChanged: (val) => setState(() => _statusFilter = val),
+              ),
+            ),
           ),
           IconButton(
             icon: const Icon(Icons.file_download_outlined, color: Colors.indigo),
-            onPressed: _exportUsers,
-            tooltip: 'Xuất Excel',
+            onPressed: () => _exportUsers(l),
+            tooltip: 'Export CSV',
           ),
         ],
         bottom: PreferredSize(
@@ -186,10 +206,10 @@ class _UserManagementScreenState extends State<UserManagementScreen> with Single
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                 child: TextField(
                   decoration: InputDecoration(
-                    hintText: 'Tìm kiếm theo tên hoặc SĐT...',
+                    hintText: l.translate('search_hint'),
                     prefixIcon: const Icon(Icons.search, color: Colors.grey),
                     filled: true,
-                    fillColor: const Color(0xFFF0F2F5),
+                    fillColor: Theme.of(context).brightness == Brightness.dark ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFF0F2F5),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
                     contentPadding: const EdgeInsets.symmetric(vertical: 0),
                   ),
@@ -204,7 +224,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> with Single
                 labelColor: Colors.indigo,
                 unselectedLabelColor: Colors.grey,
                 labelStyle: const TextStyle(fontWeight: FontWeight.bold),
-                tabs: _roles.map((role) => Tab(text: _getRoleDisplayName(role))).toList(),
+                tabs: _roles.map((role) => Tab(text: _getRoleDisplayName(role, l))).toList(),
               ),
             ],
           ),
@@ -217,21 +237,21 @@ class _UserManagementScreenState extends State<UserManagementScreen> with Single
       ),
       body: TabBarView(
         controller: _tabController,
-        children: _roles.map((role) => _buildUserList(role)).toList(),
+        children: _roles.map((role) => _buildUserList(role, l)).toList(),
       ),
     );
   }
 
-  String _getRoleDisplayName(UserRole role) {
+  String _getRoleDisplayName(UserRole role, AppLocalizations l) {
     switch (role) {
-      case UserRole.customer: return 'Khách hàng';
-      case UserRole.store: return 'Cửa hàng';
-      case UserRole.shipper: return 'Shipper';
+      case UserRole.customer: return l.translate('nav_users'); 
+      case UserRole.store: return l.translate('nav_stores');
+      case UserRole.shipper: return l.translate('nav_shippers');
       case UserRole.admin: return 'Admin';
     }
   }
 
-  Widget _buildUserList(UserRole role) {
+  Widget _buildUserList(UserRole role, AppLocalizations l) {
     return FutureBuilder<List<UserModel>>(
       future: _userRepository.getUsers(role: role),
       builder: (context, snapshot) {
@@ -247,7 +267,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> with Single
         }).toList();
 
         if (filteredUsers.isEmpty) {
-          return _buildEmptyState();
+          return _buildEmptyState(l);
         }
 
         return RefreshIndicator(
@@ -274,9 +294,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> with Single
     );
   }
 
-  void _exportUsers() async {
+  void _exportUsers(AppLocalizations l) async {
     try {
-      // Fetch all users across all roles to export
       final List<UserModel> allUsers = [];
       await Future.wait(_roles.map((role) async {
         final users = await _userRepository.getUsers(role: role);
@@ -285,11 +304,11 @@ class _UserManagementScreenState extends State<UserManagementScreen> with Single
 
       final exportData = allUsers.map((u) => {
         'ID': u.id,
-        'Họ tên': u.fullName,
-        'SĐT': u.phoneNumber,
-        'Vai trò': _getRoleDisplayName(u.role),
-        'Trạng thái': u.status == UserStatus.active ? 'Hoạt động' : 'Đã khóa',
-        'Ngày tạo': DateFormat('dd/MM/yyyy').format(u.createdAt),
+        'Name': u.fullName,
+        'Phone': u.phoneNumber,
+        'Role': _getRoleDisplayName(u.role, l),
+        'Status': u.status == UserStatus.active ? l.translate('active') : l.translate('inactive'),
+        'Created At': DateFormat('dd/MM/yyyy').format(u.createdAt),
       }).toList();
 
       if (mounted) {
@@ -301,19 +320,19 @@ class _UserManagementScreenState extends State<UserManagementScreen> with Single
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi xuất dữ liệu: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi xuất dữ liệu: ${e.toString().replaceAll('Exception: ', '')}')));
       }
     }
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(AppLocalizations l) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.search_off, size: 64, color: Colors.grey[300]),
           const SizedBox(height: 16),
-          Text('Không tìm thấy người dùng phù hợp', style: TextStyle(color: Colors.grey[600], fontSize: 16)),
+          Text(l.translate('no_data'), style: TextStyle(color: Colors.grey[600], fontSize: 16)),
         ],
       ),
     );

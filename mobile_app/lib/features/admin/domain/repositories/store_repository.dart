@@ -1,5 +1,6 @@
 abstract class StoreRepository {
   Future<List<Map<String, dynamic>>> getStores({bool? pendingApproval});
+  Future<Map<String, dynamic>> getStoreById(String storeId);
   Future<void> approveStore(String storeId);
   Future<void> rejectStore(String storeId);
   Future<Map<String, dynamic>> createStore(Map<String, dynamic> storeData);
