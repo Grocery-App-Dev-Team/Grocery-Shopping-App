@@ -6,6 +6,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
+import org.springframework.boot.autoconfigure.data.redis.RedisProperties;
+import org.springframework.data.redis.connection.RedisPassword;
 import org.springframework.data.redis.connection.lettuce.LettuceClientConfiguration;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -30,17 +32,26 @@ public class RedisConfig {
      * Cấu hình Redis Connection Factory với Lettuce (async client)
      */
     @Bean
-    public LettuceConnectionFactory redisConnectionFactory() {
+    public LettuceConnectionFactory redisConnectionFactory(RedisProperties props) {
+        // Sử dụng RedisProperties được Spring Boot bind từ spring.redis.*
+        String host = props.getHost() == null ? "localhost" : props.getHost();
+        int port = props.getPort();
+        if (port == 0) port = 6379;
+        String password = props.getPassword();
+
         RedisStandaloneConfiguration config = new RedisStandaloneConfiguration();
-        config.setHostName("localhost");
-        config.setPort(6379);
-        // config.setPassword("your-password"); // Uncomment nếu Redis có password
-        
+        config.setHostName(host);
+        config.setPort(port);
+        if (password != null && !password.isEmpty()) {
+            config.setPassword(RedisPassword.of(password));
+        }
+
+        Duration timeout = props.getTimeout() == null ? Duration.ofSeconds(5) : props.getTimeout();
         LettuceClientConfiguration clientConfig = LettuceClientConfiguration.builder()
-                .commandTimeout(Duration.ofSeconds(5))
+                .commandTimeout(timeout)
                 .shutdownTimeout(Duration.ZERO)
                 .build();
-        
+
         return new LettuceConnectionFactory(config, clientConfig);
     }
 
