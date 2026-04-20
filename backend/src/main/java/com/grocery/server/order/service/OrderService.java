@@ -26,6 +26,7 @@ import lombok.extern.slf4j.Slf4j;
 import com.grocery.server.notification.service.NotificationService;
 import com.grocery.server.notification.document.Notification;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -64,7 +65,7 @@ public class OrderService {
      * @return Thông tin đơn hàng vừa tạo
      */
     public OrderResponse createOrder(CreateOrderRequest request, Long customerId) {
-        log.info("Khách hàng {} đang tạo đơn hàng từ cửa hàng {}", customerId, request.getStoreId());
+        log.info("Khách hàng {} đang tạo đơn hàng liên cửa hàng", customerId);
 
         // 1. Validate customer
         User customer = userRepository.findById(customerId)
@@ -74,21 +75,13 @@ public class OrderService {
             throw new BadRequestException("Chỉ khách hàng mới có thể đặt hàng");
         }
 
-        // 2. Validate store
-        Store store = storeRepository.findById(request.getStoreId())
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy cửa hàng"));
-
-        if (!store.getIsOpen()) {
-            throw new BadRequestException("Cửa hàng hiện không hoạt động");
-        }
-
-        // 3. Xử lý các sản phẩm trong đơn
+        // 2. Chuẩn bị đơn hàng
         List<OrderItem> orderItems = new ArrayList<>();
         BigDecimal totalAmount = BigDecimal.ZERO;
+        List<Store> involvedStores = new ArrayList<>();
 
         Order order = Order.builder()
                 .customer(customer)
-                .store(store)
                 .status(OrderStatus.PENDING)
                 .deliveryAddress(request.getDeliveryAddress())
                 .shippingFee(SHIPPING_FEE)
@@ -102,10 +95,13 @@ public class OrderService {
                     .orElseThrow(() -> new ResourceNotFoundException(
                     "Không tìm thấy biến thể sản phẩm ID: " + itemRequest.getProductUnitMappingId()));
 
-            // Kiểm tra sản phẩm có thuộc cửa hàng này không
-            if (!productUnitMapping.getProduct().getStore().getId().equals(request.getStoreId())) {
-                throw new BadRequestException(
-                "Sản phẩm '" + productUnitMapping.getProduct().getName() + "' không thuộc cửa hàng này");
+            Store itemStore = productUnitMapping.getProduct().getStore();
+            if (!involvedStores.contains(itemStore)) {
+                involvedStores.add(itemStore);
+            }
+
+            if (itemStore != null && !itemStore.getIsOpen()) {
+                throw new BadRequestException("Cửa hàng '" + itemStore.getStoreName() + "' hiện không hoạt động");
             }
 
             // Kiểm tra tồn kho
@@ -128,20 +124,21 @@ public class OrderService {
             // Tạo OrderItem
             OrderItem orderItem = OrderItem.builder()
                     .order(order)
-                .productUnitMapping(productUnitMapping)
+                    .productUnitMapping(productUnitMapping)
                     .quantity(requestedQuantity)
-                .unitPrice(productUnitMapping.getPrice())
+                    .unitPrice(productUnitMapping.getPrice())
                     .build();
 
             orderItems.add(orderItem);
             totalAmount = totalAmount.add(orderItem.getSubtotal());
 
             // Trừ tồn kho
-                productUnitMapping.setStockQuantity(productUnitMapping.getStockQuantity() - deductedStock);
-            log.info("Trừ {} sản phẩm '{}', còn lại: {}", 
-                    requestedQuantity, 
-                    productUnitMapping.getProduct().getName(), 
-                    productUnitMapping.getStockQuantity());
+            productUnitMapping.setStockQuantity(productUnitMapping.getStockQuantity() - deductedStock);
+        }
+
+        // Gán store chính (nếu chỉ có 1 cửa hàng thì gán, nếu nhiều thì để null hoặc gán cửa hàng đầu tiên)
+        if (!involvedStores.isEmpty()) {
+            order.setStore(involvedStores.get(0));
         }
 
         order.setTotalAmount(totalAmount);
@@ -149,20 +146,22 @@ public class OrderService {
 
         // Lưu đơn hàng
         Order savedOrder = orderRepository.save(order);
-        log.info("Đã tạo đơn hàng #{} với tổng tiền: {} VNĐ", savedOrder.getId(), totalAmount);
+        log.info("Đã tạo đơn hàng #{} (liên cửa hàng) với tổng tiền: {} VNĐ", savedOrder.getId(), totalAmount);
         publishOrderCreatedEvent(savedOrder);
 
-        // Thông báo đến Store owner về đơn hàng mới
-        if (store.getOwner() != null) {
-            notificationService.createAndSend(
-                store.getOwner().getId(),
-                Notification.ORDER_CREATED,
-                "Đơn hàng mới #" + savedOrder.getId(),
-                "Khách hàng " + savedOrder.getCustomer().getFullName()
-                    + " đặt đơn " + savedOrder.getTotalAmount().toPlainString() + " VNĐ",
-                savedOrder.getId(),
-                "ORDER"
-            );
+        // Thông báo đến TẤT CẢ Store owner liên quan
+        for (Store s : involvedStores) {
+            if (s.getOwner() != null) {
+                notificationService.createAndSend(
+                    s.getOwner().getId(),
+                    Notification.ORDER_CREATED,
+                    "Đơn hàng mới #" + savedOrder.getId(),
+                    "Khách hàng " + savedOrder.getCustomer().getFullName()
+                        + " đặt đơn có sản phẩm của bạn. Tổng đơn: " + savedOrder.getTotalAmount().toPlainString() + " VNĐ",
+                    savedOrder.getId(),
+                    "ORDER"
+                );
+            }
         }
 
         return mapToOrderResponse(savedOrder);
@@ -174,8 +173,9 @@ public class OrderService {
      * @param orderId ID đơn hàng
      * @return Thông tin đơn hàng
      */
+    @Transactional(readOnly = true)
     public OrderResponse getOrderById(Long orderId) {
-        Order order = orderRepository.findById(orderId)
+        Order order = orderRepository.findByIdWithFullDetails(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng"));
         return mapToOrderResponse(order);
     }
@@ -186,8 +186,9 @@ public class OrderService {
      * @param customerId ID khách hàng
      * @return Danh sách đơn hàng
      */
+    @Transactional(readOnly = true)
     public List<OrderResponse> getOrdersByCustomer(Long customerId) {
-        List<Order> orders = orderRepository.findByCustomerId(customerId);
+        List<Order> orders = orderRepository.findByCustomerIdWithDetails(customerId);
         return orders.stream()
                 .map(this::mapToOrderResponse)
                 .collect(Collectors.toList());
@@ -199,6 +200,7 @@ public class OrderService {
      * @param storeId ID cửa hàng
      * @return Danh sách đơn hàng
      */
+    @Transactional(readOnly = true)
     public List<OrderResponse> getOrdersByStore(Long storeId) {
         List<Order> orders = orderRepository.findByStoreId(storeId);
         return orders.stream()
@@ -212,6 +214,7 @@ public class OrderService {
      * @param userId ID của store owner
      * @return Danh sách đơn hàng
      */
+    @Transactional(readOnly = true)
     public List<OrderResponse> getOrdersByStoreOwner(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy user"));
@@ -240,8 +243,9 @@ public class OrderService {
      * @param shipperId ID tài xế
      * @return Danh sách đơn hàng
      */
+    @Transactional(readOnly = true)
     public List<OrderResponse> getOrdersByShipper(Long shipperId) {
-        List<Order> orders = orderRepository.findByShipperId(shipperId);
+        List<Order> orders = orderRepository.findByShipperIdWithDetails(shipperId);
         return orders.stream()
                 .map(this::mapToOrderResponse)
                 .collect(Collectors.toList());
@@ -252,6 +256,7 @@ public class OrderService {
      * 
      * @return Danh sách đơn hàng đang chờ tài xế
      */
+    @Transactional(readOnly = true)
     public List<OrderResponse> getAvailableOrders() {
         List<Order> orders = orderRepository.findAvailableOrdersForShippers();
         return orders.stream()
@@ -264,6 +269,7 @@ public class OrderService {
      *
      * @return Danh sách đơn hàng, sắp xếp theo thời gian mới nhất
      */
+    @Transactional(readOnly = true)
     public List<OrderResponse> getAllOrders() {
         List<Order> orders = orderRepository.findAllOrdersSorted();
         return orders.stream()
@@ -274,6 +280,7 @@ public class OrderService {
     /**
      * Lấy tất cả đơn hàng có phân trang và bộ lọc (dành cho admin)
      */
+    @Transactional(readOnly = true)
     public Page<OrderResponse> getAllOrdersPaginated(int page, int size, String sortBy, String sortDir,
                                                      Long storeId, Order.OrderStatus status,
                                                      LocalDateTime from, LocalDateTime to) {
@@ -282,6 +289,58 @@ public class OrderService {
         Pageable pageable = PageRequest.of(Math.max(0, page), Math.max(1, size), Sort.by(direction, sortField));
 
         Page<Order> ordersPage = orderRepository.findAllWithFilters(storeId, status, from, to, pageable);
+        return ordersPage.map(this::mapToOrderResponse);
+    }
+
+    /**
+     * Lấy đơn hàng của khách hàng - CÓ PHÂN TRANG
+     */
+    @Transactional(readOnly = true)
+    public Page<OrderResponse> getOrdersByCustomerPaginated(Long customerId, int page, int size) {
+        Pageable pageable = PageRequest.of(Math.max(0, page), Math.max(1, size));
+        Page<Order> ordersPage = orderRepository.findByCustomerId(customerId, pageable);
+        return ordersPage.map(this::mapToOrderResponse);
+    }
+
+    /**
+     * Lấy đơn hàng của cửa hàng - CÓ PHÂN TRANG
+     */
+    @Transactional(readOnly = true)
+    public Page<OrderResponse> getOrdersByStoreOwnerPaginated(Long userId, int page, int size) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy user"));
+
+        if (!user.getRole().equals(User.UserRole.STORE)) {
+            throw new BadRequestException("Chỉ cửa hàng mới có thể xem đơn hàng của mình");
+        }
+
+        Store store = user.getStore();
+        if (store == null) {
+            throw new ResourceNotFoundException("User này chưa có cửa hàng");
+        }
+
+        Pageable pageable = PageRequest.of(Math.max(0, page), Math.max(1, size));
+        Page<Order> ordersPage = orderRepository.findPaidOrdersByStoreId(store.getId(), pageable);
+        return ordersPage.map(this::mapToOrderResponse);
+    }
+
+    /**
+     * Lấy đơn hàng của tài xế - CÓ PHÂN TRANG
+     */
+    @Transactional(readOnly = true)
+    public Page<OrderResponse> getOrdersByShipperPaginated(Long shipperId, int page, int size) {
+        Pageable pageable = PageRequest.of(Math.max(0, page), Math.max(1, size));
+        Page<Order> ordersPage = orderRepository.findByShipperId(shipperId, pageable);
+        return ordersPage.map(this::mapToOrderResponse);
+    }
+
+    /**
+     * Lấy đơn hàng có thể nhận (cho tài xế) - CÓ PHÂN TRANG
+     */
+    @Transactional(readOnly = true)
+    public Page<OrderResponse> getAvailableOrdersPaginated(int page, int size) {
+        Pageable pageable = PageRequest.of(Math.max(0, page), Math.max(1, size));
+        Page<Order> ordersPage = orderRepository.findAvailableOrdersForShippers(pageable);
         return ordersPage.map(this::mapToOrderResponse);
     }
 
@@ -372,26 +431,44 @@ public class OrderService {
         notificationService.createAndSend(
             order.getCustomer().getId(), Notification.SHIPPER_ASSIGNED,
             "Shipper đã nhận đơn của bạn",
-            "Shipper " + shipper.getFullName() + " (" + shipper.getPhoneNumber() + ") đang trên đường đến cửa hàng",
+            "Shipper " + shipper.getFullName() + " (" + shipper.getPhoneNumber() + ") đang chuẩn bị đi lấy hàng",
             orderId, "ORDER");
 
-        notificationService.createAndSend(
-            order.getStore().getOwner().getId(), Notification.SHIPPER_ASSIGNED,
-            "Có shipper nhận đơn #" + orderId,
-            "Shipper " + shipper.getFullName() + " đã nhận đơn hàng",
-            orderId, "ORDER");
+        List<Store> involvedStores = order.getOrderItems().stream()
+                .map(oi -> oi.getProductUnitMapping().getProduct().getStore())
+                .distinct().collect(Collectors.toList());
+
+        for (Store s : involvedStores) {
+            if (s.getOwner() != null) {
+                notificationService.createAndSend(
+                    s.getOwner().getId(), Notification.SHIPPER_ASSIGNED,
+                    "Có shipper nhận đơn #" + orderId,
+                    "Shipper " + shipper.getFullName() + " đã nhận đơn hàng",
+                    orderId, "ORDER");
+            }
+        }
 
         return mapToOrderResponse(order);
     }
 
         private void publishOrderCreatedEvent(Order order) {
+        boolean isMultiStore = order.getOrderItems().stream()
+            .map(oi -> oi.getProductUnitMapping().getProduct().getStore().getId())
+            .distinct().count() > 1;
+
+        String storeName = isMultiStore
+            ? "Đơn hàng liên cửa hàng (" + order.getOrderItems().stream()
+                .map(oi -> oi.getProductUnitMapping().getProduct().getStore().getStoreName())
+                .distinct().limit(2).collect(Collectors.joining(", ")) + "...)"
+            : (order.getStore() != null ? order.getStore().getStoreName() : "Nhiều cửa hàng");
+
         OrderCreatedEvent event = OrderCreatedEvent.builder()
             .eventType("ORDER_CREATED")
             .timestamp(System.currentTimeMillis())
             .orderId(order.getId())
             .customerId(order.getCustomer().getId())
-            .storeId(order.getStore().getId())
-            .storeName(order.getStore().getStoreName())
+            .storeId(order.getStore() != null ? order.getStore().getId() : null)
+            .storeName(storeName)
             .totalAmount(order.getTotalAmount())
             .shippingFee(order.getShippingFee())
             .deliveryAddress(order.getDeliveryAddress())
@@ -412,7 +489,7 @@ public class OrderService {
             .timestamp(System.currentTimeMillis())
             .orderId(order.getId())
             .customerId(order.getCustomer().getId())
-            .storeId(order.getStore().getId())
+            .storeId(order.getStore() != null ? order.getStore().getId() : null)
             .shipperId(shipper.getId())
             .shipperName(shipper.getFullName())
             .shipperPhone(shipper.getPhoneNumber())
@@ -432,7 +509,7 @@ public class OrderService {
             .timestamp(System.currentTimeMillis())
             .orderId(order.getId())
             .customerId(order.getCustomer().getId())
-            .storeId(order.getStore().getId())
+            .storeId(order.getStore() != null ? order.getStore().getId() : null)
             .shipperId(order.getShipper() != null ? order.getShipper().getId() : null)
             .oldStatus(oldStatus)
             .newStatus(newStatus)
@@ -446,20 +523,26 @@ public class OrderService {
 
     private void sendOrderNotifications(Order order, OrderStatus newStatus, String reason) {
         Long customerId = order.getCustomer().getId();
-        Long storeOwnerId = order.getStore().getOwner().getId();
         Long orderId = order.getId();
+
+        List<Store> involvedStores = order.getOrderItems().stream()
+                .map(oi -> oi.getProductUnitMapping().getProduct().getStore())
+                .distinct().collect(Collectors.toList());
+
+        boolean isMultiStore = involvedStores.size() > 1;
+        String storeDisplay = isMultiStore ? "Các cửa hàng" : (involvedStores.isEmpty() ? "Cửa hàng" : involvedStores.get(0).getStoreName());
 
         switch (newStatus) {
             case CONFIRMED -> notificationService.createAndSend(
                 customerId, Notification.ORDER_CONFIRMED,
                 "Đơn hàng #" + orderId + " đã được xác nhận",
-                "Cửa hàng " + order.getStore().getStoreName() + " đã xác nhận đơn của bạn",
+                storeDisplay + " đã xác nhận đơn của bạn",
                 orderId, "ORDER");
 
             case PICKING_UP -> notificationService.createAndSend(
                 customerId, Notification.ORDER_PICKING_UP,
                 "Shipper đang lấy hàng",
-                "Shipper " + order.getShipper().getFullName() + " đang đến lấy hàng tại cửa hàng",
+                "Shipper " + order.getShipper().getFullName() + " đang đến các cửa hàng để lấy hàng",
                 orderId, "ORDER");
 
             case DELIVERING -> notificationService.createAndSend(
@@ -468,33 +551,39 @@ public class OrderService {
                 "Shipper " + order.getShipper().getFullName() + " đang giao hàng đến bạn",
                 orderId, "ORDER");
 
-            case DELIVERED -> {
-                notificationService.createAndSend(
+            case DELIVERED -> notificationService.createAndSend(
                     customerId, Notification.ORDER_DELIVERED,
                     "Giao hàng thành công! 🎉",
                     "Đơn hàng #" + orderId + " đã được giao. Hãy đánh giá trải nghiệm của bạn!",
                     orderId, "ORDER");
-                notificationService.createAndSend(
-                    storeOwnerId, Notification.ORDER_DELIVERED,
-                    "Đơn hàng #" + orderId + " hoàn thành",
-                    "Shipper đã giao thành công cho khách hàng " + order.getCustomer().getFullName(),
-                    orderId, "ORDER");
-            }
 
-            case CANCELLED -> {
-                notificationService.createAndSend(
+            case CANCELLED -> notificationService.createAndSend(
                     customerId, Notification.ORDER_CANCELLED,
                     "Đơn hàng #" + orderId + " đã bị hủy",
                     reason != null ? "Lý do: " + reason : "Đơn hàng của bạn đã bị hủy",
                     orderId, "ORDER");
+
+            default -> {}
+        }
+
+        // Thông báo đến tất cả Store Owners liên quan
+        for (Store store : involvedStores) {
+            if (store.getOwner() == null) continue;
+            Long storeOwnerId = store.getOwner().getId();
+
+            if (newStatus == OrderStatus.DELIVERED) {
+                notificationService.createAndSend(
+                    storeOwnerId, Notification.ORDER_DELIVERED,
+                    "Đơn hàng #" + orderId + " hoàn thành",
+                    "Shipper đã giao thành công phần sản phẩm của bạn cho khách hàng " + order.getCustomer().getFullName(),
+                    orderId, "ORDER");
+            } else if (newStatus == OrderStatus.CANCELLED) {
                 notificationService.createAndSend(
                     storeOwnerId, Notification.ORDER_CANCELLED,
                     "Đơn hàng #" + orderId + " bị hủy",
                     reason != null ? "Lý do: " + reason : "Đơn hàng đã bị hủy",
                     orderId, "ORDER");
             }
-
-            default -> {}
         }
     }
 
@@ -521,17 +610,22 @@ public class OrderService {
         switch (currentStatus) {
             case PENDING:
                 if (newStatus == OrderStatus.CONFIRMED) {
-                    // Chỉ Store owner mới confirm
-                    if (!user.getRole().equals(User.UserRole.STORE) ||
-                            !order.getStore().getOwner().getId().equals(user.getId())) {
-                        throw new UnauthorizedException("Chỉ chủ cửa hàng mới có thể xác nhận đơn hàng");
+                    // Check if user is owner of at least one involved store
+                    boolean isAuthorizedStoreOwner = order.getOrderItems().stream()
+                        .map(oi -> oi.getProductUnitMapping().getProduct().getStore().getOwner())
+                        .anyMatch(owner -> owner != null && owner.getId().equals(user.getId()));
+                        
+                    if (!user.getRole().equals(User.UserRole.STORE) || !isAuthorizedStoreOwner) {
+                        throw new UnauthorizedException("Chỉ chủ cửa hàng liên quan mới có thể xác nhận đơn hàng");
                     }
                 } else if (newStatus == OrderStatus.CANCELLED) {
                     // Customer hoặc Store có thể hủy
                     boolean isCustomer = order.getCustomer().getId().equals(user.getId());
-                    boolean isStoreOwner = user.getRole().equals(User.UserRole.STORE) &&
-                            order.getStore().getOwner().getId().equals(user.getId());
-                    if (!isCustomer && !isStoreOwner) {
+                    boolean isAuthorizedStoreOwner = order.getOrderItems().stream()
+                        .map(oi -> oi.getProductUnitMapping().getProduct().getStore().getOwner())
+                        .anyMatch(owner -> owner != null && owner.getId().equals(user.getId()));
+
+                    if (!isCustomer && !isAuthorizedStoreOwner) {
                         throw new UnauthorizedException("Bạn không có quyền hủy đơn hàng này");
                     }
                 } else {
@@ -593,24 +687,33 @@ public class OrderService {
         List<OrderItemResponse> items = order.getOrderItems().stream()
                 .map(item -> OrderItemResponse.builder()
                         .id(item.getId())
-                .productId(item.getProductUnitMapping().getProduct().getId())
-                .productName(item.getProductUnitMapping().getProduct().getName())
-                .productImageUrl(item.getProductUnitMapping().getProduct().getImageUrl())
-                .unitName(item.getProductUnitMapping().getDisplayUnitName())
+                        .productId(item.getProductUnitMapping().getProduct().getId())
+                        .productName(item.getProductUnitMapping().getProduct().getName())
+                        .productImageUrl(item.getProductUnitMapping().getProduct().getImageUrl())
+                        .unitName(item.getProductUnitMapping().getDisplayUnitName())
                         .unitPrice(item.getUnitPrice())
                         .quantity(item.getQuantity())
                         .subtotal(item.getSubtotal())
                         .build())
                 .collect(Collectors.toList());
 
+        List<Store> involvedStores = order.getOrderItems().stream()
+                .map(oi -> oi.getProductUnitMapping().getProduct().getStore())
+                .distinct().collect(Collectors.toList());
+
+        boolean isMultiStore = involvedStores.size() > 1;
+        Long storeId = isMultiStore ? null : (involvedStores.isEmpty() ? null : involvedStores.get(0).getId());
+        String storeName = isMultiStore ? "Đơn hàng liên cửa hàng" : (involvedStores.isEmpty() ? "Nhiều cửa hàng" : involvedStores.get(0).getStoreName());
+        String storeAddress = isMultiStore ? "Nhiều địa chỉ" : (involvedStores.isEmpty() ? "" : involvedStores.get(0).getAddress());
+
         return OrderResponse.builder()
                 .id(order.getId())
                 .customerId(order.getCustomer().getId())
                 .customerName(order.getCustomer().getFullName())
                 .customerPhone(order.getCustomer().getPhoneNumber())
-                .storeId(order.getStore().getId())
-                .storeName(order.getStore().getStoreName())
-                .storeAddress(order.getStore().getAddress())
+                .storeId(storeId)
+                .storeName(storeName)
+                .storeAddress(storeAddress)
                 .shipperId(order.getShipper() != null ? order.getShipper().getId() : null)
                 .shipperName(order.getShipper() != null ? order.getShipper().getFullName() : null)
                 .shipperPhone(order.getShipper() != null ? order.getShipper().getPhoneNumber() : null)

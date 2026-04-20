@@ -159,7 +159,7 @@ class CustomerProductListCard extends StatelessWidget {
                               onPressed: onBuyNow,
                               style: FilledButton.styleFrom(
                                 backgroundColor: const Color(0xFFFF7A1A),
-                                foregroundColor: Colors.white,
+                                foregroundColor: scheme.onPrimary,
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 16,
                                   vertical: 10,

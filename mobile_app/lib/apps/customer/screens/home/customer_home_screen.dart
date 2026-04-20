@@ -102,7 +102,7 @@ class _HomeShellState extends State<_HomeShell> {
       appBar = AppBar(title: Text(context.tr(vi: 'Đơn hàng', en: 'Orders')));
     } else if (_currentIndex == 3) {
       body = const CustomerChatListScreen();
-      appBar = AppBar(title: Text(context.tr(vi: 'Chat', en: 'Chat')));
+      appBar = null; // Màn hình chat đã có AppBar riêng
     } else {
       body = const CustomerProfileScreen();
       appBar = AppBar(title: Text(context.tr(vi: 'Hồ sơ', en: 'Profile')));
@@ -126,9 +126,12 @@ class _HomeShellState extends State<_HomeShell> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Vị trí cần được bật'),
-          content: const Text(
-            'Ứng dụng cần bật dịch vụ vị trí để xác định vị trí hiện tại. Vui lòng bật định vị và thử lại.',
+          title: Text(context.tr(vi: 'Vị trí cần được bật', en: 'Location service needed')),
+          content: Text(
+            context.tr(
+              vi: 'Ứng dụng cần bật dịch vụ vị trí để xác định vị trí hiện tại. Vui lòng bật định vị và thử lại.',
+              en: 'The app needs location services to determine your current position. Please enable location and try again.',
+            ),
           ),
           actions: [
             TextButton(
@@ -136,11 +139,11 @@ class _HomeShellState extends State<_HomeShell> {
                 Navigator.of(context).pop();
                 await Geolocator.openLocationSettings();
               },
-              child: const Text('Mở cài đặt'),
+              child: Text(context.tr(vi: 'Mở cài đặt', en: 'Open settings')),
             ),
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Đóng'),
+              child: Text(context.tr(vi: 'Đóng', en: 'Close')),
             ),
           ],
         );
@@ -154,9 +157,12 @@ class _HomeShellState extends State<_HomeShell> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Quyền vị trí bị chặn'),
-          content: const Text(
-            'Quyền truy cập vị trí đã bị từ chối vĩnh viễn. Vui lòng mở cài đặt app và bật lại.',
+          title: Text(context.tr(vi: 'Quyền vị trí bị chặn', en: 'Location permission denied')),
+          content: Text(
+            context.tr(
+              vi: 'Quyền truy cập vị trí đã bị từ chối vĩnh viễn. Vui lòng mở cài đặt app và bật lại.',
+              en: 'Location access has been permanently denied. Please open app settings and enable it.',
+            ),
           ),
           actions: [
             TextButton(
@@ -164,11 +170,11 @@ class _HomeShellState extends State<_HomeShell> {
                 Navigator.of(context).pop();
                 await Geolocator.openAppSettings();
               },
-              child: const Text('Mở cài đặt'),
+              child: Text(context.tr(vi: 'Mở cài đặt', en: 'Open settings')),
             ),
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Đóng'),
+              child: Text(context.tr(vi: 'Đóng', en: 'Close')),
             ),
           ],
         );
@@ -674,6 +680,7 @@ Widget _storeCard({
   int? totalReviews,
   VoidCallback? onTap,
 }) {
+  final scheme = Theme.of(context).colorScheme;
   return InkWell(
     onTap: onTap,
     borderRadius: BorderRadius.circular(16),
@@ -685,7 +692,7 @@ Widget _storeCard({
         color: Theme.of(context).colorScheme.surface,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
+            color: scheme.shadow.withValues(alpha: 0.08),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -701,8 +708,8 @@ Widget _storeCard({
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    CustomerTheme.primaryColor,
-                    CustomerTheme.primaryColor.withValues(alpha: 0.7),
+                    scheme.primary,
+                    scheme.primary.withValues(alpha: 0.7),
                   ],
                 ),
               ),
@@ -713,18 +720,18 @@ Widget _storeCard({
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
+                        color: scheme.onPrimary.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(Icons.store,
-                          size: 20, color: Colors.white),
+                      child: Icon(Icons.store,
+                          size: 20, color: scheme.onPrimary),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         name,
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: scheme.onPrimary,
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
                         ),
@@ -737,16 +744,18 @@ Widget _storeCard({
                           horizontal: 6, vertical: 3),
                       decoration: BoxDecoration(
                         color: isOpen
-                            ? Colors.green.withValues(alpha: 0.9)
-                            : Colors.grey,
+                            ? scheme.primary.withValues(alpha: 0.9)
+                            : scheme.onSurface.withValues(alpha: 0.4),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
                         isOpen
                             ? context.tr(vi: 'Mở', en: 'Open')
                             : context.tr(vi: 'Đóng', en: 'Closed'),
-                        style:
-                            const TextStyle(color: Colors.white, fontSize: 9),
+                        style: TextStyle(
+                          color: scheme.onPrimary,
+                          fontSize: 9,
+                        ),
                       ),
                     ),
                   ],

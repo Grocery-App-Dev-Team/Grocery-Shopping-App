@@ -444,7 +444,7 @@ class _CustomerOrderDetailScreenState extends State<CustomerOrderDetailScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Đơn #$id'),
+        title: Text(context.tr(vi: 'Đơn #$id', en: 'Order #$id')),
         actions: [
           IconButton(
             onPressed: _load,
@@ -669,8 +669,8 @@ class _CustomerOrderDetailScreenState extends State<CustomerOrderDetailScreen> {
                   label: Text(context.tr(
                       vi: 'Chat với Shipper', en: 'Chat with Shipper')),
                   style: FilledButton.styleFrom(
-                    backgroundColor: Colors.teal,
-                    foregroundColor: Colors.white,
+                    backgroundColor: scheme.secondary,
+                    foregroundColor: scheme.onSecondary,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
@@ -678,7 +678,9 @@ class _CustomerOrderDetailScreenState extends State<CustomerOrderDetailScreen> {
                   ),
                 ),
               ),
-            if (status == 'PENDING')
+            if (status == 'PENDING' &&
+                ((_order?['paymentStatus']?.toString() ?? '').toUpperCase() == 'PENDING' ||
+                (_order?['paymentStatus']?.toString() ?? '').toUpperCase() == 'FAILED'))
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
@@ -710,8 +712,8 @@ class _CustomerOrderDetailScreenState extends State<CustomerOrderDetailScreen> {
                   icon: const Icon(Icons.star),
                   label: Text(context.tr(vi: 'Đánh giá', en: 'Review')),
                   style: FilledButton.styleFrom(
-                    backgroundColor: Colors.amber,
-                    foregroundColor: Colors.black87,
+                    backgroundColor: scheme.tertiary,
+                    foregroundColor: scheme.onTertiary,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
@@ -724,21 +726,21 @@ class _CustomerOrderDetailScreenState extends State<CustomerOrderDetailScreen> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: Colors.green.withValues(alpha: 0.1),
+                  color: scheme.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(14),
                   border:
-                      Border.all(color: Colors.green.withValues(alpha: 0.3)),
+                      Border.all(color: scheme.primary.withValues(alpha: 0.3)),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.check_circle,
-                        color: Colors.green, size: 20),
+                    Icon(Icons.check_circle,
+                        color: scheme.primary, size: 20),
                     const SizedBox(width: 8),
                     Text(
                       context.tr(vi: 'Đã đánh giá', en: 'Reviewed'),
-                      style: const TextStyle(
-                        color: Colors.green,
+                      style: TextStyle(
+                        color: scheme.primary,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -842,7 +844,7 @@ class _StatusChip extends StatelessWidget {
     }
   }
 
-  Color _color() {
+  Color _color(ColorScheme scheme) {
     switch (status) {
       case 'DELIVERED':
         return Colors.green;
@@ -851,17 +853,18 @@ class _StatusChip extends StatelessWidget {
       case 'PICKING_UP':
         return Colors.deepOrange;
       case 'CONFIRMED':
-        return Colors.blue;
+        return scheme.primary;
       case 'CANCELLED':
-        return Colors.red;
+        return scheme.error;
       default:
-        return Colors.grey;
+        return scheme.onSurfaceVariant;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final color = _color();
+    final scheme = Theme.of(context).colorScheme;
+    final color = _color(scheme);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),

@@ -22,9 +22,8 @@ import java.util.List;
 public class CreateOrderRequest {
 
     /**
-     * ID cửa hàng (khách hàng đặt từ cửa hàng nào)
+     * ID cửa hàng (Optional nếu đơn hàng mua từ nhiều cửa hàng)
      */
-    @NotNull(message = "ID cửa hàng không được để trống")
     private Long storeId;
 
     /**

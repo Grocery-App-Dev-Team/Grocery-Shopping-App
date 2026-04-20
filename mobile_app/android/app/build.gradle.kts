@@ -21,13 +21,38 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.mobile_app"
+        // applicationId = "com.example.mobile_app" // Moved to flavors
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+    }
+
+    flavorDimensions += "app"
+
+    productFlavors {
+        create("customer") {
+            dimension = "app"
+            applicationId = "com.dichohho.customer"
+            manifestPlaceholders["appLabel"] = "Đi Chợ Hộ - Khách Hàng"
+        }
+        create("store") {
+            dimension = "app"
+            applicationId = "com.dichohho.store"
+            manifestPlaceholders["appLabel"] = "Đi Chợ Hộ - Chủ Cửa Hàng"
+        }
+        create("shipper") {
+            dimension = "app"
+            applicationId = "com.dichohho.shipper"
+            manifestPlaceholders["appLabel"] = "Đi Chợ Hộ - Shipper"
+        }
+        create("admin") {
+            dimension = "app"
+            applicationId = "com.dichohho.admin"
+            manifestPlaceholders["appLabel"] = "Đi Chợ Hộ - Quản Trị Viên"
+        }
     }
 
     buildTypes {

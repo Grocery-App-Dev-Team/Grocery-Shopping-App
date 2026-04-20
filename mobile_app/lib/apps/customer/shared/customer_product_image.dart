@@ -24,16 +24,16 @@ class CustomerProductImage extends StatelessWidget {
       borderRadius: borderRadius,
       child: Semantics(
         label: semanticLabel ?? '',
-        child: _buildImage(),
+        child: _buildImage(context),
       ),
     );
   }
 
-  Widget _buildImage() {
+  Widget _buildImage(BuildContext context) {
     final url = imageUrl.trim();
 
     if (url.isEmpty) {
-      return _fallback();
+      return _fallback(context);
     }
 
     if (url.startsWith('assets/')) {
@@ -42,7 +42,7 @@ class CustomerProductImage extends StatelessWidget {
         fit: fit,
         width: width,
         height: height,
-        errorBuilder: (_, __, ___) => _fallback(),
+        errorBuilder: (_, __, ___) => _fallback(context),
       );
     }
 
@@ -53,17 +53,18 @@ class CustomerProductImage extends StatelessWidget {
       height: height,
       loadingBuilder: (context, child, loadingProgress) {
         if (loadingProgress == null) return child;
-        return _loadingPlaceholder();
+        return _loadingPlaceholder(context);
       },
-      errorBuilder: (_, __, ___) => _fallback(),
+      errorBuilder: (_, __, ___) => _fallback(context),
     );
   }
 
-  Widget _loadingPlaceholder() {
+  Widget _loadingPlaceholder(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Container(
       width: width,
       height: height,
-      color: const Color(0xFFF0F3F8),
+      color: scheme.surfaceContainerHighest,
       child: const Center(
         child: SizedBox(
           width: 22,
@@ -74,16 +75,17 @@ class CustomerProductImage extends StatelessWidget {
     );
   }
 
-  Widget _fallback() {
+  Widget _fallback(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Container(
       width: width,
       height: height,
-      color: const Color(0xFFE9EDF3),
-      child: const Center(
+      color: scheme.surfaceContainerHighest,
+      child: Center(
         child: Icon(
           Icons.image_not_supported_outlined,
           size: 26,
-          color: Colors.black38,
+          color: scheme.onSurface.withValues(alpha: 0.38),
         ),
       ),
     );

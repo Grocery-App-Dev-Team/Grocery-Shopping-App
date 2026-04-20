@@ -92,4 +92,14 @@ public class Review {
             throw new IllegalArgumentException("Rating must be between 1 and 5");
         }
     }
+
+    @Override
+    public int hashCode() {
+        return getClass().getName().hashCode();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        return this == obj;
+    }
 }

@@ -77,6 +77,22 @@ public class OrderController {
     }
 
     /**
+     * Lấy đơn hàng của khách hàng - CÓ PHÂN TRANG
+     * GET /api/orders/my-orders/paged?page=0&size=10
+     * Role: CUSTOMER
+     */
+    @GetMapping("/my-orders/paged")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public ResponseEntity<ApiResponse<org.springframework.data.domain.Page<OrderResponse>>> getMyOrdersPaged(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            Authentication authentication) {
+        Long customerId = getUserIdFromAuthentication(authentication);
+        org.springframework.data.domain.Page<OrderResponse> orders = orderService.getOrdersByCustomerPaginated(customerId, page, size);
+        return ResponseEntity.ok(ApiResponse.success("Lấy danh sách đơn hàng thành công", orders));
+    }
+
+    /**
      * Lấy tất cả đơn hàng của cửa hàng hiện tại
      * GET /api/orders/my-store-orders
      * Role: STORE (chỉ lấy đơn của cửa hàng mình)
@@ -86,6 +102,22 @@ public class OrderController {
     public ResponseEntity<ApiResponse<List<OrderResponse>>> getMyStoreOrders(Authentication authentication) {
         Long userId = getUserIdFromAuthentication(authentication);
         List<OrderResponse> orders = orderService.getOrdersByStoreOwner(userId);
+        return ResponseEntity.ok(ApiResponse.success("Lấy danh sách đơn hàng cửa hàng thành công", orders));
+    }
+
+    /**
+     * Lấy đơn hàng của cửa hàng - CÓ PHÂN TRANG
+     * GET /api/orders/my-store-orders/paged?page=0&size=10
+     * Role: STORE
+     */
+    @GetMapping("/my-store-orders/paged")
+    @PreAuthorize("hasRole('STORE')")
+    public ResponseEntity<ApiResponse<org.springframework.data.domain.Page<OrderResponse>>> getMyStoreOrdersPaged(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            Authentication authentication) {
+        Long userId = getUserIdFromAuthentication(authentication);
+        org.springframework.data.domain.Page<OrderResponse> orders = orderService.getOrdersByStoreOwnerPaginated(userId, page, size);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách đơn hàng cửa hàng thành công", orders));
     }
 
@@ -149,6 +181,22 @@ public class OrderController {
     }
 
     /**
+     * Lấy đơn giao hàng của tài xế - CÓ PHÂN TRANG
+     * GET /api/orders/my-deliveries/paged?page=0&size=10
+     * Role: SHIPPER
+     */
+    @GetMapping("/my-deliveries/paged")
+    @PreAuthorize("hasRole('SHIPPER')")
+    public ResponseEntity<ApiResponse<org.springframework.data.domain.Page<OrderResponse>>> getMyDeliveriesPaged(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            Authentication authentication) {
+        Long shipperId = getUserIdFromAuthentication(authentication);
+        org.springframework.data.domain.Page<OrderResponse> orders = orderService.getOrdersByShipperPaginated(shipperId, page, size);
+        return ResponseEntity.ok(ApiResponse.success("Lấy danh sách đơn giao hàng thành công", orders));
+    }
+
+    /**
      * Lấy danh sách đơn hàng có thể nhận (cho tài xế)
      * GET /api/orders/available
      * Role: SHIPPER
@@ -157,6 +205,20 @@ public class OrderController {
     @PreAuthorize("hasRole('SHIPPER')")
     public ResponseEntity<ApiResponse<List<OrderResponse>>> getAvailableOrders() {
         List<OrderResponse> orders = orderService.getAvailableOrders();
+        return ResponseEntity.ok(ApiResponse.success("Lấy danh sách đơn hàng có thể nhận thành công", orders));
+    }
+
+    /**
+     * Lấy đơn hàng có thể nhận - CÓ PHÂN TRANG
+     * GET /api/orders/available/paged?page=0&size=10
+     * Role: SHIPPER
+     */
+    @GetMapping("/available/paged")
+    @PreAuthorize("hasRole('SHIPPER')")
+    public ResponseEntity<ApiResponse<org.springframework.data.domain.Page<OrderResponse>>> getAvailableOrdersPaged(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        org.springframework.data.domain.Page<OrderResponse> orders = orderService.getAvailableOrdersPaginated(page, size);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách đơn hàng có thể nhận thành công", orders));
     }
 

@@ -5,7 +5,7 @@ class ChatBadgeIcon extends StatefulWidget {
   final Color? color;
   final double size;
 
-  const ChatBadgeIcon({Key? key, this.color, this.size = 24}) : super(key: key);
+  const ChatBadgeIcon({super.key, this.color, this.size = 24});
 
   @override
   State<ChatBadgeIcon> createState() => _ChatBadgeIconState();

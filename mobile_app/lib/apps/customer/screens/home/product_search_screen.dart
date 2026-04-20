@@ -10,7 +10,7 @@ import '../../shared/variant_selection_sheet.dart';
 import '../../utils/customer_l10n.dart';
 import 'product_detail_screen.dart';
 
-const Color _softBg = Color(0xFFF6F8FB);
+
 
 class ProductSearchScreen extends StatefulWidget {
   const ProductSearchScreen({
@@ -67,6 +67,8 @@ class _ProductSearchScreenState extends State<ProductSearchScreen> {
             .where((p) => p.name.toLowerCase().contains(lower))
             .toList();
 
+    final scheme = Theme.of(context).colorScheme;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -74,7 +76,7 @@ class _ProductSearchScreenState extends State<ProductSearchScreen> {
         ),
       ),
       body: Container(
-        color: _softBg,
+        color: scheme.surfaceContainerLowest,
         child: results.isEmpty
             ? CustomerStateView.empty(
                 compact: true,
@@ -99,7 +101,7 @@ class _ProductSearchScreenState extends State<ProductSearchScreen> {
                 icon: Icon(
                   keyword.isEmpty ? Icons.search_rounded : Icons.search_off,
                   size: 52,
-                  color: Colors.black38,
+                  color: scheme.onSurface.withValues(alpha: 0.38),
                 ),
                 actionLabel: keyword.isEmpty
                     ? context.tr(vi: 'Quay lại', en: 'Go back')

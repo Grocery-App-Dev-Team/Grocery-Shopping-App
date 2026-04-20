@@ -4,6 +4,7 @@ import 'package:geolocator/geolocator.dart';
 
 import '../../services/customer_current_location_service.dart';
 import '../../repository/customer_auth_repository.dart';
+import '../../utils/customer_l10n.dart';
 import '../home/customer_home_screen.dart';
 import 'customer_login_screen.dart';
 
@@ -121,9 +122,12 @@ class _CustomerSplashScreenState extends State<CustomerSplashScreen>
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Vị trí cần được bật'),
-          content: const Text(
-            'Ứng dụng cần bật dịch vụ vị trí để xác định vị trí hiện tại. Vui lòng bật định vị và thử lại.',
+          title: Text(context.tr(vi: 'Vị trí cần được bật', en: 'Location service needed')),
+          content: Text(
+            context.tr(
+              vi: 'Ứng dụng cần bật dịch vụ vị trí để xác định vị trí hiện tại. Vui lòng bật định vị và thử lại.',
+              en: 'The app needs location services to determine your current position. Please enable location and try again.',
+            ),
           ),
           actions: [
             TextButton(
@@ -131,11 +135,11 @@ class _CustomerSplashScreenState extends State<CustomerSplashScreen>
                 Navigator.of(context).pop();
                 await Geolocator.openLocationSettings();
               },
-              child: const Text('Mở cài đặt'),
+              child: Text(context.tr(vi: 'Mở cài đặt', en: 'Open settings')),
             ),
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Đóng'),
+              child: Text(context.tr(vi: 'Đóng', en: 'Close')),
             ),
           ],
         );
@@ -149,9 +153,12 @@ class _CustomerSplashScreenState extends State<CustomerSplashScreen>
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Quyền vị trí bị chặn'),
-          content: const Text(
-            'Quyền truy cập vị trí đã bị từ chối vĩnh viễn. Vui lòng mở cài đặt app và bật lại.',
+          title: Text(context.tr(vi: 'Quyền vị trí bị chặn', en: 'Location permission denied')),
+          content: Text(
+            context.tr(
+              vi: 'Quyền truy cập vị trí đã bị từ chối vĩnh viễn. Vui lòng mở cài đặt app và bật lại.',
+              en: 'Location access has been permanently denied. Please open app settings and enable it.',
+            ),
           ),
           actions: [
             TextButton(
@@ -159,11 +166,11 @@ class _CustomerSplashScreenState extends State<CustomerSplashScreen>
                 Navigator.of(context).pop();
                 await Geolocator.openAppSettings();
               },
-              child: const Text('Mở cài đặt'),
+              child: Text(context.tr(vi: 'Mở cài đặt', en: 'Open settings')),
             ),
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Đóng'),
+              child: Text(context.tr(vi: 'Đóng', en: 'Close')),
             ),
           ],
         );

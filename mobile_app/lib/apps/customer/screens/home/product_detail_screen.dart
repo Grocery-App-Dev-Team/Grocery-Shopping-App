@@ -105,6 +105,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     final totalPrice = _unitPrice * _quantity;
 
     return Scaffold(
@@ -140,13 +141,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFE8F5E9),
+                      color: scheme.secondaryContainer,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
                       _product.categoryName,
-                      style: const TextStyle(
-                        color: Color(0xFF2E7D32),
+                      style: TextStyle(
+                        color: scheme.onSecondaryContainer,
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),
@@ -157,8 +158,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             const SizedBox(height: 8),
             Text(
               '${_unitPrice.toStringAsFixed(0)}\u0111',
-              style: const TextStyle(
-                color: Colors.red,
+              style: TextStyle(
+                color: scheme.error,
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
               ),
@@ -168,7 +169,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               Text(
                 context.tr(
                     vi: 'Còn lại: $_stockLeft', en: 'Remaining: $_stockLeft'),
-                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
               ),
             if (_product.storeName.isNotEmpty)
               Text(
@@ -215,9 +216,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       fontWeight:
                           selected ? FontWeight.w600 : FontWeight.normal,
                     ),
-                    selectedColor: const Color(
-                      0xFF2F80ED,
-                    ).withValues(alpha: 0.2),
+                    selectedColor: scheme.primary.withValues(alpha: 0.2),
                   );
                 }),
               ),
@@ -265,10 +264,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 ),
                 Text(
                   '${totalPrice.toStringAsFixed(0)}\u0111',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: Colors.red,
+                    color: scheme.error,
                   ),
                 ),
               ],

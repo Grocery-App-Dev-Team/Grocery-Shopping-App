@@ -140,7 +140,7 @@ Future<void> showVariantSelectionSheet(
                       icon: const Icon(Icons.add_circle_outline),
                     ),
                     const SizedBox(width: 12),
-                    if (stock > 0) Text(context.tr(vi: 'Còn: ', en: 'Stock: ') + '$stock'),
+                    if (stock > 0) Text('${context.tr(vi: 'Còn: ', en: 'Stock: ')}$stock'),
                     if (stock <= 0) Text(context.tr(vi: 'Hết hàng', en: 'Out of stock'), style: const TextStyle(color: Colors.red)),
                   ],
                 ),

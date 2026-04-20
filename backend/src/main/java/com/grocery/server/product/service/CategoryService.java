@@ -9,6 +9,8 @@ import com.grocery.server.shared.exception.BadRequestException;
 import com.grocery.server.shared.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,7 +30,10 @@ public class CategoryService {
     
     /**
      * Lấy tất cả categories (Public)
+     * Cache: lưu kết quả vào cache "categories", tự động hết hạn sau 5 phút
      */
+    @Cacheable(value = "categories", key = "'all'")
+    @Transactional(readOnly = true)
     public List<CategoryResponse> getAllCategories() {
         List<Category> categories = categoryRepository.findAll();
         log.info("Get all categories, total: {}", categories.size());
@@ -41,6 +46,7 @@ public class CategoryService {
     /**
      * Lấy category theo ID (Public)
      */
+    @Transactional(readOnly = true)
     public CategoryResponse getCategoryById(Long categoryId) {
         Category category = categoryRepository.findById(categoryId)
                 .orElseThrow(() -> new ResourceNotFoundException("Category", "id", categoryId));
@@ -53,6 +59,7 @@ public class CategoryService {
      * Tạo category mới (Admin only)
      */
     @Transactional
+    @CacheEvict(value = "categories", allEntries = true)
     public CategoryResponse createCategory(CreateCategoryRequest request) {
         // Kiểm tra tên category đã tồn tại chưa
         if (categoryRepository.existsByName(request.getName())) {
@@ -74,6 +81,7 @@ public class CategoryService {
      * Cập nhật category (Admin only)
      */
     @Transactional
+    @CacheEvict(value = "categories", allEntries = true)
     public CategoryResponse updateCategory(Long categoryId, UpdateCategoryRequest request) {
         Category category = categoryRepository.findById(categoryId)
                 .orElseThrow(() -> new ResourceNotFoundException("Category", "id", categoryId));
@@ -100,6 +108,7 @@ public class CategoryService {
      * Xóa category (Admin only)
      */
     @Transactional
+    @CacheEvict(value = "categories", allEntries = true)
     public void deleteCategory(Long categoryId) {
         Category category = categoryRepository.findById(categoryId)
                 .orElseThrow(() -> new ResourceNotFoundException("Category", "id", categoryId));

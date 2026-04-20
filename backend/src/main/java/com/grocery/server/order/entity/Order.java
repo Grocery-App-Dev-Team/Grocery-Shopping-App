@@ -9,6 +9,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.math.BigDecimal;
@@ -39,10 +40,10 @@ public class Order {
     private User customer;
 
     /**
-     * Cửa hàng bán hàng
+     * Cửa hàng bán hàng (Optional nếu đơn hàng mua từ nhiều cửa hàng)
      */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "store_id", nullable = false)
+    @JoinColumn(name = "store_id")
     private Store store;
 
     /**
@@ -118,12 +119,14 @@ public class Order {
      * Chi tiết các sản phẩm trong đơn hàng
      */
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    @BatchSize(size = 50)
     private List<OrderItem> orderItems;
 
     /**
      * Lịch sử thanh toán của đơn hàng
      */
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    @BatchSize(size = 50)
     private List<Payment> payments;
 
     /**
@@ -131,6 +134,16 @@ public class Order {
      */
     @OneToOne(mappedBy = "order", cascade = CascadeType.ALL)
     private Review review;
+
+    @Override
+    public int hashCode() {
+        return getClass().getName().hashCode();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        return this == obj;
+    }
 
     // ========== ENUMS ==========
 

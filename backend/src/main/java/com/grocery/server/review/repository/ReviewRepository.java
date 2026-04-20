@@ -6,6 +6,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+
+import java.util.Collection;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -62,4 +64,20 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
      * @return Số lượng đánh giá
      */
     long countByStoreId(Long storeId);
+
+    /**
+     * Lấy rating trung bình và tổng số đánh giá của TẤT CẢ cửa hàng trong 1 query
+     * Tránh N+1 khi hiển thị danh sách stores
+     * @return List<Object[]> với mỗi row = [storeId, avgRating, totalReviews]
+     */
+    @Query("SELECT r.store.id, AVG(r.rating), COUNT(r) FROM Review r GROUP BY r.store.id")
+    List<Object[]> calculateAllStoreRatings();
+
+    /**
+     * Lấy rating trung bình và tổng số đánh giá cho danh sách storeIds cụ thể
+     * @param storeIds Danh sách ID cửa hàng
+     * @return List<Object[]> với mỗi row = [storeId, avgRating, totalReviews]
+     */
+    @Query("SELECT r.store.id, AVG(r.rating), COUNT(r) FROM Review r WHERE r.store.id IN :storeIds GROUP BY r.store.id")
+    List<Object[]> calculateRatingsForStores(@Param("storeIds") Collection<Long> storeIds);
 }

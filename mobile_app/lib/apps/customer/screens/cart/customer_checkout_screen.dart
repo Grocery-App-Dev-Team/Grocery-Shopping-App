@@ -232,14 +232,6 @@ class _CustomerCheckoutScreenState extends State<CustomerCheckoutScreen> {
         message: context.tr(vi: 'Đang đặt hàng...', en: 'Placing order...'),
       );
 
-      final Map<String, List<CartItem>> grouped = {};
-      for (final item in items) {
-        final key = item.storeName.isEmpty
-            ? context.tr(vi: 'Cửa hàng', en: 'Store')
-            : item.storeName;
-        grouped.putIfAbsent(key, () => <CartItem>[]).add(item);
-      }
-
       final address = AuthSession.address;
       if (address == null || address.isEmpty) {
         throw Exception(context.tr(
@@ -247,56 +239,40 @@ class _CustomerCheckoutScreenState extends State<CustomerCheckoutScreen> {
             en: 'Please add delivery address'));
       }
 
-      int created = 0;
+      final payload = <String, dynamic>{
+        'deliveryAddress': address,
+        'items': items
+            .map(
+              (i) => {
+                'productUnitMappingId': i.productUnitMappingId,
+                'quantity': i.quantity,
+              },
+            )
+            .toList(),
+      };
+
+      final res = await ApiClient.dio.post('/orders', data: payload);
+      final data = res.data;
+
       int? lastOrderId;
-
-      for (final entry in grouped.entries) {
-        final storeName = entry.key;
-        final storeId = await _resolveStoreIdByName(storeName);
-        if (storeId == null) {
-          throw Exception(
-            context.tr(
-              vi: 'Không tìm thấy cửa hàng: $storeName',
-              en: 'Store not found: $storeName',
-            ),
-          );
-        }
-
-        final payload = <String, dynamic>{
-          'storeId': storeId,
-          'deliveryAddress': address,
-          'items': entry.value
-              .map(
-                (i) => {
-                  'productUnitMappingId': i.productUnitMappingId,
-                  'quantity': i.quantity,
-                },
-              )
-              .toList(),
-        };
-
-        final res = await ApiClient.dio.post('/orders', data: payload);
-        final data = res.data;
-        if (data is Map && data['success'] == true) {
-          created += 1;
-          final order = data['data'];
-          final id = (order is Map) ? order['id'] : null;
-          if (id != null) lastOrderId = int.tryParse(id.toString());
-        } else {
-          throw Exception(
-            (data is Map && data['message'] != null)
-                ? data['message'].toString()
-                : context.tr(
-                    vi: 'Đặt hàng thất bại', en: 'Order placement failed'),
-          );
-        }
+      if (data is Map && data['success'] == true) {
+        final order = data['data'];
+        final id = (order is Map) ? order['id'] : null;
+        if (id != null) lastOrderId = int.tryParse(id.toString());
+      } else {
+        throw Exception(
+          (data is Map && data['message'] != null)
+              ? data['message'].toString()
+              : context.tr(
+                  vi: 'Đặt hàng thất bại', en: 'Order placement failed'),
+        );
       }
 
       SnackBarUtils.hide(context);
 
       final rootContext = context;
       Map<String, dynamic>? paymentInit;
-      if (created == 1 && lastOrderId != null) {
+      if (lastOrderId != null) {
         try {
           paymentInit =
               await _initiatePayment(orderId: lastOrderId, method: method);
@@ -314,7 +290,7 @@ class _CustomerCheckoutScreenState extends State<CustomerCheckoutScreen> {
         await Navigator.of(rootContext).push(
           MaterialPageRoute(
             builder: (_) => CustomerPaymentTrackingScreen(
-              orderId: lastOrderId,
+              orderId: lastOrderId!,
               paymentId: paymentId,
               redirectUrl: redirectUrl,
               paymentMethod: method,

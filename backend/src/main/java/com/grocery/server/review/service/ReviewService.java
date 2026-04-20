@@ -19,6 +19,8 @@ import com.grocery.server.notification.service.NotificationService;
 import com.grocery.server.notification.document.Notification;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -53,6 +55,7 @@ public class ReviewService {
      * @return ReviewResponse
      */
     @Transactional
+    @CacheEvict(value = "storeRatings", allEntries = true)
     public ReviewResponse createReview(CreateReviewRequest request, Long reviewerId) {
         log.info("Creating review for order: {} by user: {}", request.getOrderId(), reviewerId);
 
@@ -115,6 +118,7 @@ public class ReviewService {
      * @return ReviewResponse
      */
     @Transactional
+    @CacheEvict(value = "storeRatings", allEntries = true)
     public ReviewResponse updateReview(Long reviewId, UpdateReviewRequest request, Long userId) {
         log.info("Updating review: {} by user: {}", reviewId, userId);
 
@@ -144,6 +148,7 @@ public class ReviewService {
      * @param userId ID người dùng
      */
     @Transactional
+    @CacheEvict(value = "storeRatings", allEntries = true)
     public void deleteReview(Long reviewId, Long userId) {
         log.info("Deleting review: {} by user: {}", reviewId, userId);
 
@@ -285,6 +290,7 @@ public class ReviewService {
      * @return StoreRatingResponse
      */
     @Transactional(readOnly = true)
+    @Cacheable(value = "storeRatings", key = "#storeId")
     public StoreRatingResponse getStoreRating(Long storeId) {
         // Kiểm tra store tồn tại
         Store store = storeRepository.findById(storeId)

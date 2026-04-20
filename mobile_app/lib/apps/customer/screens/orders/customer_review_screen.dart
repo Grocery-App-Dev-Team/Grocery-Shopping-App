@@ -56,7 +56,7 @@ class _CustomerReviewScreenState extends State<CustomerReviewScreen> {
       }
     } on DioException catch (e) {
       final data = e.response?.data;
-      String message = 'Không thể gửi đánh giá';
+      String message = context.tr(vi: 'Không thể gửi đánh giá', en: 'Cannot submit review');
       if (data is Map && data['message'] != null) {
         message = data['message'].toString();
       }
@@ -168,18 +168,18 @@ class _CustomerReviewScreenState extends State<CustomerReviewScreen> {
                 onPressed: _submitting ? null : _submitReview,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: scheme.primary,
-                  foregroundColor: Colors.white,
+                  foregroundColor: scheme.onPrimary,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
                 ),
                 child: _submitting
-                    ? const SizedBox(
+                    ? SizedBox(
                         width: 24,
                         height: 24,
                         child: CircularProgressIndicator(
-                          color: Colors.white,
+                          color: scheme.onPrimary,
                           strokeWidth: 2,
                         ),
                       )

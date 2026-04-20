@@ -158,7 +158,7 @@ class _CustomerAppState extends State<CustomerApp> {
               builder: (context, languageState) {
                 return MaterialApp(
                   navigatorKey: _navigatorKey,
-                  title: 'Grocery Shopping - Customer',
+                  title: 'Grocery Customer',
                   theme: CustomerTheme.lightTheme,
                   darkTheme: CustomerTheme.darkTheme,
                   themeMode: themeState.themeMode,

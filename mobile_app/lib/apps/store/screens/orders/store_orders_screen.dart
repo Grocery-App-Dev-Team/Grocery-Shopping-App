@@ -77,38 +77,7 @@ class _StoreOrdersScreenState extends State<StoreOrdersScreen> {
       appBar: AppBar(
           title: Text(_storeTr(context, vi: 'Đơn hàng', en: 'Orders')),
           backgroundColor: StoreTheme.primaryColor,
-          foregroundColor: Colors.white,
-          bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(50),
-            child: Container(
-              color: Theme.of(context).colorScheme.surface,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    _buildFilterChip(_storeTr(context, vi: 'Tất cả', en: 'All'), null),
-                    const SizedBox(width: 8),
-                    _buildFilterChip(
-                        _storeTr(context, vi: 'Chờ xác nhận', en: 'Pending'),
-                        'PENDING'),
-                    const SizedBox(width: 8),
-                    _buildFilterChip(
-                        _storeTr(context, vi: 'Đã xác nhận', en: 'Confirmed'),
-                        'CONFIRMED'),
-                    const SizedBox(width: 8),
-                    _buildFilterChip(
-                        _storeTr(context, vi: 'Đang giao', en: 'Delivering'),
-                        'DELIVERING'),
-                    const SizedBox(width: 8),
-                    _buildFilterChip(
-                        _storeTr(context, vi: 'Hoàn thành', en: 'Completed'),
-                        'DELIVERED'),
-                  ],
-                ),
-              ),
-            ),
-          )),
+          foregroundColor: Colors.white),
       body: BlocBuilder<StoreOrdersBloc, StoreOrdersState>(
         builder: (context, state) {
           if (state is StoreOrdersLoading)
@@ -117,25 +86,57 @@ class _StoreOrdersScreenState extends State<StoreOrdersScreen> {
             return Center(child: Text(state.message));
           if (state is StoreOrdersLoaded) {
             final orders = _filterOrders(state.orders);
-            if (orders.isEmpty) {
-              return Center(
-                child: Text(
-                  _storeTr(context,
-                      vi: 'Chưa có đơn hàng nào', en: 'No orders yet'),
-                ),
-              );
-            }
             return RefreshIndicator(
               onRefresh: () async {
                 context.read<StoreOrdersBloc>().add(LoadStoreOrders());
               },
-              child: ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: orders.length,
-                itemBuilder: (ctx, i) => _OrderCard(
-                  order: orders[i],
-                  onUpdateStatus: _updateStatus,
-                ),
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          _buildFilterChip(_storeTr(context, vi: 'Tất cả', en: 'All'), null),
+                          const SizedBox(width: 8),
+                          _buildFilterChip(
+                              _storeTr(context, vi: 'Chờ xác nhận', en: 'Pending'),
+                              'PENDING'),
+                          const SizedBox(width: 8),
+                          _buildFilterChip(
+                              _storeTr(context, vi: 'Đã xác nhận', en: 'Confirmed'),
+                              'CONFIRMED'),
+                          const SizedBox(width: 8),
+                          _buildFilterChip(
+                              _storeTr(context, vi: 'Đang giao', en: 'Delivering'),
+                              'DELIVERING'),
+                          const SizedBox(width: 8),
+                          _buildFilterChip(
+                              _storeTr(context, vi: 'Hoàn thành', en: 'Completed'),
+                              'DELIVERED'),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: orders.isEmpty
+                        ? Center(
+                            child: Text(
+                              _storeTr(context,
+                                  vi: 'Chưa có đơn hàng nào', en: 'No orders yet'),
+                            ),
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: orders.length,
+                            itemBuilder: (ctx, i) => _OrderCard(
+                              order: orders[i],
+                              onUpdateStatus: _updateStatus,
+                            ),
+                          ),
+                  ),
+                ],
               ),
             );
           }
@@ -150,24 +151,21 @@ class _StoreOrdersScreenState extends State<StoreOrdersScreen> {
     return GestureDetector(
       onTap: () => _setFilter(status),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected
-              ? StoreTheme.primaryColor
-              : Theme.of(context).colorScheme.surfaceContainerHigh,
-          borderRadius: BorderRadius.circular(16),
+          color: isSelected ? StoreTheme.primaryColor : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isSelected
-                ? StoreTheme.primaryColor
-                : Colors.grey.withValues(alpha: 0.28),
+            color: isSelected ? StoreTheme.primaryColor : StoreTheme.primaryColor.withValues(alpha: 0.5),
+            width: 1.2,
           ),
         ),
         child: Text(label,
             style: TextStyle(
-            color: isSelected
-              ? Colors.white
-              : Theme.of(context).colorScheme.onSurface,
-                fontSize: 12)),
+              color: isSelected ? Colors.white : StoreTheme.primaryColor,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            )),
       ),
     );
   }
