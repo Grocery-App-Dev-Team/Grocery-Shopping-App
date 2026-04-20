@@ -22,6 +22,7 @@ class _CustomerRegisterScreenState extends State<CustomerRegisterScreen> {
   final _streetController = TextEditingController();
   final _addressController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
   bool _isLoading = false;
   bool _agreeToTerms = false;
 
@@ -269,6 +270,12 @@ class _CustomerRegisterScreenState extends State<CustomerRegisterScreen> {
         items: _provinces,
         onChanged: _isLoadingLocation ? null : _onProvinceChanged,
         prefixIcon: Icons.location_city_outlined,
+        validator: (value) {
+          if (value == null) {
+            return context.tr(vi: 'Vui lòng chọn tỉnh/thành phố', en: 'Please select province/city');
+          }
+          return null;
+        },
       ),
       if (_districts.isNotEmpty) ...[
         const SizedBox(height: 16),
@@ -278,6 +285,12 @@ class _CustomerRegisterScreenState extends State<CustomerRegisterScreen> {
           items: _districts,
           onChanged: _selectedProvince == null ? null : _onDistrictChanged,
           prefixIcon: Icons.map_outlined,
+          validator: (value) {
+            if (value == null) {
+              return context.tr(vi: 'Vui lòng chọn quận/huyện', en: 'Please select district');
+            }
+            return null;
+          },
         ),
       ],
       const SizedBox(height: 16),
@@ -292,7 +305,7 @@ class _CustomerRegisterScreenState extends State<CustomerRegisterScreen> {
         prefixIcon: Icons.place_outlined,
         validator: (value) {
           if (value == null) {
-            return context.tr(vi: 'Vui lòng chọn địa chỉ', en: 'Please select an address');
+            return context.tr(vi: 'Vui lòng chọn phường/xã', en: 'Please select ward/commune');
           }
           return null;
         },
@@ -332,6 +345,19 @@ class _CustomerRegisterScreenState extends State<CustomerRegisterScreen> {
         isPassword: true,
         prefixIcon: Icons.lock,
         validator: _validatePassword,
+        focusColor: CustomerTheme.primaryColor,
+      ),
+      const SizedBox(height: 16),
+      CustomTextField(
+        label: context.tr(vi: 'Nhập lại mật khẩu *', en: 'Confirm password *'),
+        hint: context.tr(
+          vi: 'Nhập lại mật khẩu',
+          en: 'Re-enter your password',
+        ),
+        controller: _confirmPasswordController,
+        isPassword: true,
+        prefixIcon: Icons.lock_outline,
+        validator: _validateConfirmPassword,
         focusColor: CustomerTheme.primaryColor,
       ),
     ],
@@ -404,7 +430,7 @@ class _CustomerRegisterScreenState extends State<CustomerRegisterScreen> {
             )
           : Text(
               context.tr(vi: 'Đăng ký', en: 'Sign up'),
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
     ),
   );
@@ -420,7 +446,7 @@ class _CustomerRegisterScreenState extends State<CustomerRegisterScreen> {
         onTap: () => Navigator.pop(context),
         child: Text(
           context.tr(vi: 'Đăng nhập ngay', en: 'Sign in now'),
-          style: TextStyle(
+          style: const TextStyle(
             color: CustomerTheme.primaryColor,
             fontWeight: FontWeight.w600,
           ),
@@ -452,15 +478,6 @@ class _CustomerRegisterScreenState extends State<CustomerRegisterScreen> {
     return null;
   }
 
-  String? _validateAddress(String? value) {
-    if (_selectedProvince == null ||
-        _selectedDistrict == null ||
-        _selectedWard == null) {
-      return context.tr(vi: 'Vui lòng chọn đầy đủ địa chỉ', en: 'Please complete address selection');
-    }
-    return null;
-  }
-
   String? _validateStreet(String? value) {
     if (value == null || value.trim().isEmpty) {
       return context.tr(vi: 'Vui lòng nhập tên đường', en: 'Please enter street name');
@@ -474,6 +491,16 @@ class _CustomerRegisterScreenState extends State<CustomerRegisterScreen> {
     }
     if (value.length < 6) {
       return context.tr(vi: 'Mật khẩu phải có ít nhất 6 ký tự', en: 'Password must be at least 6 characters');
+    }
+    return null;
+  }
+
+  String? _validateConfirmPassword(String? value) {
+    if (value == null || value.isEmpty) {
+      return context.tr(vi: 'Vui lòng nhập lại mật khẩu', en: 'Please confirm your password');
+    }
+    if (value != _passwordController.text) {
+      return context.tr(vi: 'Mật khẩu không khớp', en: 'Passwords do not match');
     }
     return null;
   }
@@ -532,6 +559,7 @@ class _CustomerRegisterScreenState extends State<CustomerRegisterScreen> {
     _streetController.dispose();
     _addressController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -554,7 +582,12 @@ class _CustomerRegisterScreenState extends State<CustomerRegisterScreen> {
           )
           .toList(),
       onChanged: onChanged,
-      validator: validator ?? (_) => _validateAddress(null),
+      validator: validator ?? (value) {
+        if (value == null) {
+          return context.tr(vi: 'Vui lòng chọn', en: 'Please select');
+        }
+        return null;
+      },
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(prefixIcon, color: Theme.of(context).colorScheme.onSurfaceVariant),

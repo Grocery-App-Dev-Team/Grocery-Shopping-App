@@ -8,6 +8,7 @@ import com.grocery.server.product.repository.UnitCategoryRepository;
 import com.grocery.server.product.repository.UnitRepository;
 import com.grocery.server.shared.dto.ApiResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -26,6 +27,7 @@ public class UnitController {
     private final UnitCategoryRepository unitCategoryRepository;
 
     @GetMapping("/categories")
+    @Cacheable(value = "unitCategories", key = "'all'")
     public ResponseEntity<ApiResponse<List<UnitCategoryResponse>>> getAllCategories() {
         List<UnitCategoryResponse> categories = unitCategoryRepository.findByIsActiveTrueOrderByDisplayOrderAsc()
                 .stream()
@@ -35,6 +37,7 @@ public class UnitController {
     }
 
     @GetMapping("/categories/{categoryId}/units")
+    @Cacheable(value = "units", key = "#categoryId")
     public ResponseEntity<ApiResponse<List<UnitResponse>>> getUnitsByCategory(@PathVariable Long categoryId) {
         List<UnitResponse> units = unitRepository.findByCategoryIdAndIsActiveTrueOrderByDisplayOrderAsc(categoryId)
                 .stream()
@@ -44,6 +47,7 @@ public class UnitController {
     }
 
     @GetMapping
+    @Cacheable(value = "units", key = "'all'")
     public ResponseEntity<ApiResponse<List<UnitResponse>>> getAllUnits() {
         List<UnitResponse> units = unitRepository.findByIsActiveTrueOrderByDisplayOrderAsc()
                 .stream()

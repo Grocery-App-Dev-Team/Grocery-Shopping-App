@@ -112,10 +112,8 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
         _orders = const [];
       }
     } catch (e) {
-      _error = context.tr(
-        vi: 'Không thể tải đơn hàng',
-        en: 'Unable to load orders',
-      );
+      debugPrint('❌ Error loading orders: $e');
+      _error = '$e';
       _orders = const [];
     } finally {
       if (mounted) {
@@ -295,7 +293,7 @@ class _StatusChip extends StatelessWidget {
     }
   }
 
-  Color _color() {
+  Color _color(ColorScheme scheme) {
     switch (status) {
       case 'DELIVERED':
         return Colors.green;
@@ -304,17 +302,18 @@ class _StatusChip extends StatelessWidget {
       case 'PICKING_UP':
         return Colors.deepOrange;
       case 'CONFIRMED':
-        return Colors.blue;
+        return scheme.primary;
       case 'CANCELLED':
-        return Colors.red;
+        return scheme.error;
       default:
-        return Colors.grey;
+        return scheme.onSurfaceVariant;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final color = _color();
+    final scheme = Theme.of(context).colorScheme;
+    final color = _color(scheme);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),

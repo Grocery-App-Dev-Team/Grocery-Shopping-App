@@ -83,10 +83,44 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     /**
      * Tìm kiếm sản phẩm theo từ khóa (Full-text search)
      */
-    @Query("SELECT p FROM Product p " +
+    @Query("SELECT DISTINCT p FROM Product p " +
+           "LEFT JOIN FETCH p.productUnitMappings pum " +
+           "LEFT JOIN FETCH pum.unit u " +
            "WHERE LOWER(p.name) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
-           "AND p.status = 'AVAILABLE'")
+           "AND p.status = 'AVAILABLE' " +
+           "AND p.store.isOpen = true")
     List<Product> searchByKeyword(@Param("keyword") String keyword);
+    
+    /**
+     * Tìm sản phẩm theo category và fetch cả units (EAGER loading)
+     */
+    @Query("SELECT DISTINCT p FROM Product p " +
+           "LEFT JOIN FETCH p.productUnitMappings pum " +
+           "LEFT JOIN FETCH pum.unit u " +
+           "WHERE p.category.id = :categoryId " +
+           "AND p.store.isOpen = true")
+    List<Product> findByCategoryIdWithUnits(@Param("categoryId") Long categoryId);
+    
+    /**
+     * Tìm sản phẩm còn hàng của 1 cửa hàng và fetch cả units
+     */
+    @Query("SELECT DISTINCT p FROM Product p " +
+           "LEFT JOIN FETCH p.productUnitMappings pum " +
+           "LEFT JOIN FETCH pum.unit u " +
+           "WHERE p.store.id = :storeId " +
+           "AND p.status = 'AVAILABLE' " +
+           "AND p.store.isOpen = true " +
+           "ORDER BY p.name ASC")
+    List<Product> findAvailableProductsByStoreWithUnits(@Param("storeId") Long storeId);
+    
+    /**
+     * Tìm sản phẩm theo ID và fetch cả units
+     */
+    @Query("SELECT DISTINCT p FROM Product p " +
+           "LEFT JOIN FETCH p.productUnitMappings pum " +
+           "LEFT JOIN FETCH pum.unit u " +
+           "WHERE p.id = :productId")
+    java.util.Optional<Product> findByIdWithUnits(@Param("productId") Long productId);
     
     /**
        * Tìm ProductUnitMapping theo ID (dùng cho Order Module)
@@ -126,6 +160,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
      */
     @Query("SELECT DISTINCT p FROM Product p " +
            "LEFT JOIN FETCH p.productUnitMappings pum " +
-           "LEFT JOIN FETCH pum.unit u")
+           "LEFT JOIN FETCH pum.unit u " +
+           "WHERE p.store.isOpen = true")
     List<Product> findAllWithUnits();
 }

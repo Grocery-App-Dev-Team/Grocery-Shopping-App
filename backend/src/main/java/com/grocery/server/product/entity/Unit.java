@@ -121,6 +121,16 @@ public class Unit {
         createdAt = LocalDateTime.now();
     }
 
+    @Override
+    public int hashCode() {
+        return getClass().getName().hashCode();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        return this == obj;
+    }
+
     /**
      * Helper method: Lấy tên phân loại
      */

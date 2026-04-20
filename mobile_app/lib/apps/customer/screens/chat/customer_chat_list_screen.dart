@@ -117,7 +117,7 @@ class _CustomerChatListScreenState extends State<CustomerChatListScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(context.tr(vi: 'Tin nhắn', en: 'Messages')),
+        title: Text(context.tr(vi: 'Chat', en: 'Chat')),
         actions: [
           Icon(
             _connected ? Icons.wifi : Icons.wifi_off,

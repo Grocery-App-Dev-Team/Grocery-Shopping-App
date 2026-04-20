@@ -221,7 +221,7 @@ class _CartItemTile extends StatelessWidget {
           color: scheme.error,
           borderRadius: BorderRadius.circular(14),
         ),
-        child: const Icon(Icons.delete_outline, color: Colors.white),
+        child: Icon(Icons.delete_outline, color: scheme.onError),
       ),
       confirmDismiss: (_) => _confirmRemove(context),
       onDismissed: (_) => onDelete(),
@@ -470,7 +470,7 @@ class _CheckoutBar extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor:
                     onBuy != null ? scheme.primary : scheme.outline,
-                foregroundColor: Colors.white,
+                foregroundColor: scheme.onPrimary,
                 disabledBackgroundColor: scheme.surfaceContainerHighest,
                 padding:
                     const EdgeInsets.symmetric(horizontal: 32, vertical: 14),

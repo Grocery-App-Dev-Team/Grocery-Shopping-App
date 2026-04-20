@@ -50,6 +50,7 @@ public class ProductService {
     /**
      * Lấy tất cả products (Public)
      */
+    @Transactional(readOnly = true)
     public List<ProductResponse> getAllProducts() {
         // Sử dụng JOIN FETCH để lấy cả units trong 1 query
         List<Product> products = productRepository.findAllWithUnits();
@@ -63,6 +64,7 @@ public class ProductService {
     /**
      * Lấy products theo store ID (Public)
      */
+    @Transactional(readOnly = true)
     public List<ProductResponse> getProductsByStore(Long storeId) {
         // Sử dụng JOIN FETCH để lấy cả units trong 1 query
         List<Product> products = productRepository.findByStoreIdWithUnits(storeId);
@@ -76,12 +78,13 @@ public class ProductService {
     /**
      * Lấy products theo category ID (Public)
      */
+    @Transactional(readOnly = true)
     public List<ProductResponse> getProductsByCategory(Long categoryId) {
         // Kiểm tra category có tồn tại không
         categoryRepository.findById(categoryId)
                 .orElseThrow(() -> new ResourceNotFoundException("Category", "id", categoryId));
         
-        List<Product> products = productRepository.findByCategoryId(categoryId);
+        List<Product> products = productRepository.findByCategoryIdWithUnits(categoryId);
         log.info("Get products by category: {}, total: {}", categoryId, products.size());
         
         return products.stream()
@@ -92,8 +95,9 @@ public class ProductService {
     /**
      * Lấy products đang available theo store (Public)
      */
+    @Transactional(readOnly = true)
     public List<ProductResponse> getAvailableProductsByStore(Long storeId) {
-        List<Product> products = productRepository.findAvailableProductsByStore(storeId);
+        List<Product> products = productRepository.findAvailableProductsByStoreWithUnits(storeId);
         log.info("Get available products by store: {}, total: {}", storeId, products.size());
         
         return products.stream()
@@ -104,6 +108,7 @@ public class ProductService {
     /**
      * Tìm kiếm products theo keyword (Public)
      */
+    @Transactional(readOnly = true)
     public List<ProductResponse> searchProducts(String keyword) {
         List<Product> products = productRepository.searchByKeyword(keyword);
         log.info("Search products with keyword: '{}', found: {}", keyword, products.size());
@@ -116,9 +121,14 @@ public class ProductService {
     /**
      * Lấy product theo ID (Public)
      */
+    @Transactional(readOnly = true)
     public ProductResponse getProductById(Long productId) {
-        Product product = productRepository.findById(productId)
+        Product product = productRepository.findByIdWithUnits(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("Product", "id", productId));
+        
+        if (product.getStore() == null || Boolean.FALSE.equals(product.getStore().getIsOpen())) {
+            throw new ResourceNotFoundException("Product", "id", productId);
+        }
         
         log.info("Get product by ID: {}", productId);
         return convertToResponse(product);

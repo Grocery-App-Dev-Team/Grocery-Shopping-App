@@ -168,7 +168,7 @@ class _CustomerPaymentMethodScreenState
                     ),
                     title: context.tr(
                         vi: 'Tiền mặt khi nhận hàng', en: 'Cash on delivery'),
-                    subtitle: 'COD',
+                    subtitle: context.tr(vi: 'Tiền mặt', en: 'COD'),
                   ),
                 ),
                 const SizedBox(height: 10),

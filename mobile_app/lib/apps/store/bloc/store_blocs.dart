@@ -14,8 +14,6 @@ import '../../../features/products/data/unit_service.dart';
 import '../../../features/products/data/unit_model.dart';
 import '../../../features/review/data/review_service.dart';
 import '../../../features/review/data/review_model.dart';
-import '../../../features/notification/bloc/notification_bloc.dart';
-import '../../../features/notification/data/notification_model.dart';
 import '../services/store_realtime_service.dart';
 
 // ============ DASHBOARD BLOC ============
@@ -182,12 +180,27 @@ class StoreOrdersBloc extends Bloc<StoreOrdersEvent, StoreOrdersState> {
 
   Future<void> _onUpdateStatus(
       UpdateOrderStatus event, Emitter<StoreOrdersState> emit) async {
+    // Optimistic update: update UI immediately before API call
+    if (state is StoreOrdersLoaded) {
+      final current = (state as StoreOrdersLoaded).orders;
+      final updated = current.map((o) {
+        if (o.id == event.orderId) {
+          return o.copyWith(status: event.status);
+        }
+        return o;
+      }).toList();
+      emit(StoreOrdersLoaded(updated));
+    }
+
     try {
       await _orderService.updateOrderStatus(event.orderId,
           newStatus: event.status);
+      // Background sync after a short delay to ensure consistency
+      await Future.delayed(const Duration(milliseconds: 300));
       add(LoadStoreOrders());
     } catch (e) {
-      emit(StoreOrdersError(e.toString()));
+      // On error, reload to get correct state
+      add(LoadStoreOrders());
     }
   }
 

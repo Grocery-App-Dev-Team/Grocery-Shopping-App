@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -72,6 +73,7 @@ public class StoreService {
     /**
      * Lấy thông tin cửa hàng của mình
      */
+    @Transactional(readOnly = true)
     public StoreResponse getMyStore() {
         User currentUser = getCurrentUser();
 
@@ -86,6 +88,7 @@ public class StoreService {
     /**
      * Lấy thông tin chi tiết 1 cửa hàng (public)
      */
+    @Transactional(readOnly = true)
     public StoreResponse getStoreById(Long storeId) {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Store", "id", storeId));
@@ -98,13 +101,16 @@ public class StoreService {
     /**
      * Lấy danh sách tất cả cửa hàng (public)
      */
+    @Transactional(readOnly = true)
     public List<StoreListResponse> getAllStores() {
         List<Store> stores = storeRepository.findAll();
+        Map<Long, Object[]> ratingMap = buildRatingMap(reviewRepository.calculateAllStoreRatings());
 
         return stores.stream()
                 .map(store -> {
-                    Double avgRating = reviewRepository.calculateAverageRating(store.getId());
-                    Long totalReviews = reviewRepository.countByStoreId(store.getId());
+                    Object[] rating = ratingMap.get(store.getId());
+                    Double avgRating = rating != null ? (Double) rating[1] : null;
+                    Long totalReviews = rating != null ? (Long) rating[2] : 0L;
                     return StoreListResponse.fromEntity(store, avgRating, totalReviews);
                 })
                 .collect(Collectors.toList());
@@ -113,13 +119,16 @@ public class StoreService {
     /**
      * Lấy danh sách cửa hàng đang mở cửa (public)
      */
+    @Transactional(readOnly = true)
     public List<StoreListResponse> getOpenStores() {
         List<Store> stores = storeRepository.findByIsOpen(true);
+        Map<Long, Object[]> ratingMap = buildRatingMapForStores(stores);
 
         return stores.stream()
                 .map(store -> {
-                    Double avgRating = reviewRepository.calculateAverageRating(store.getId());
-                    Long totalReviews = reviewRepository.countByStoreId(store.getId());
+                    Object[] rating = ratingMap.get(store.getId());
+                    Double avgRating = rating != null ? (Double) rating[1] : null;
+                    Long totalReviews = rating != null ? (Long) rating[2] : 0L;
                     return StoreListResponse.fromEntity(store, avgRating, totalReviews);
                 })
                 .collect(Collectors.toList());
@@ -128,6 +137,7 @@ public class StoreService {
     /**
      * Tìm kiếm cửa hàng theo tên hoặc địa chỉ (public)
      */
+    @Transactional(readOnly = true)
     public List<StoreListResponse> searchStores(String keyword) {
         List<Store> stores = storeRepository.findByStoreNameContainingIgnoreCase(keyword);
 
@@ -136,10 +146,13 @@ public class StoreService {
             stores = storeRepository.findByAddressContainingIgnoreCase(keyword);
         }
 
+        Map<Long, Object[]> ratingMap = buildRatingMapForStores(stores);
+
         return stores.stream()
                 .map(store -> {
-                    Double avgRating = reviewRepository.calculateAverageRating(store.getId());
-                    Long totalReviews = reviewRepository.countByStoreId(store.getId());
+                    Object[] rating = ratingMap.get(store.getId());
+                    Double avgRating = rating != null ? (Double) rating[1] : null;
+                    Long totalReviews = rating != null ? (Long) rating[2] : 0L;
                     return StoreListResponse.fromEntity(store, avgRating, totalReviews);
                 })
                 .collect(Collectors.toList());
@@ -200,5 +213,29 @@ public class StoreService {
         String phoneNumber = SecurityContextHolder.getContext().getAuthentication().getName();
         return userRepository.findByPhoneNumber(phoneNumber)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "phoneNumber", phoneNumber));
+    }
+
+    /**
+     * Helper: Build rating map từ kết quả batch query của ReviewRepository
+     * @param ratingRows List<Object[]> với mỗi row = [storeId, avgRating, totalReviews]
+     * @return Map<storeId, Object[]>
+     */
+    private Map<Long, Object[]> buildRatingMap(List<Object[]> ratingRows) {
+        return ratingRows.stream().collect(Collectors.toMap(
+                row -> (Long) row[0],
+                row -> row
+        ));
+    }
+
+    /**
+     * Helper: Build rating map cho danh sách stores cụ thể
+     * Sử dụng query với IN clause thay vì lấy tất cả
+     */
+    private Map<Long, Object[]> buildRatingMapForStores(List<Store> stores) {
+        if (stores.isEmpty()) {
+            return Map.of();
+        }
+        List<Long> storeIds = stores.stream().map(Store::getId).collect(Collectors.toList());
+        return buildRatingMap(reviewRepository.calculateRatingsForStores(storeIds));
     }
 }

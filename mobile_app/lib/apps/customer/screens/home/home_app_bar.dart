@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../../../core/cart/cart_session.dart';
 import '../../../../core/widgets/chat_badge_icon.dart';
 import '../../utils/customer_l10n.dart';
-import '../chat/customer_chat_list_screen.dart';
 
 class HomeBottomBar extends StatelessWidget {
   final int currentIndex;
@@ -62,6 +61,7 @@ class _CartBadgeIcon extends StatelessWidget {
           0,
           (sum, item) => sum + item.quantity,
         );
+        final scheme = Theme.of(context).colorScheme;
         return Stack(
           clipBehavior: Clip.none,
           children: [
@@ -75,8 +75,8 @@ class _CartBadgeIcon extends StatelessWidget {
                     horizontal: 5,
                     vertical: 2,
                   ),
-                  decoration: const BoxDecoration(
-                    color: Colors.green,
+                  decoration: BoxDecoration(
+                    color: scheme.primary,
                     shape: BoxShape.circle,
                   ),
                   constraints: const BoxConstraints(
@@ -86,8 +86,8 @@ class _CartBadgeIcon extends StatelessWidget {
                   child: Center(
                     child: Text(
                       totalQuantity > 99 ? '99+' : totalQuantity.toString(),
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: scheme.onPrimary,
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
                       ),
