@@ -1,9 +1,5 @@
 import 'package:json_annotation/json_annotation.dart';
-<<<<<<< Updated upstream
-=======
 import 'package:flutter/foundation.dart';
-import 'unit_model.dart';
->>>>>>> Stashed changes
 
 part 'product_model.g.dart';
 
@@ -26,6 +22,9 @@ class ProductModel {
   final String? createdAt;
   @JsonKey(name: 'updated_at')
   final String? updatedAt;
+  
+  /// Variants/Units list from backend
+  final List<ProductUnitMapping>? units;
 
   const ProductModel({
     this.id,
@@ -42,61 +41,37 @@ class ProductModel {
     this.status,
     this.createdAt,
     this.updatedAt,
+    this.units,
   });
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {
-<<<<<<< Updated upstream
-    // Handle nested units structure from backend if present
-    double? price;
-    int? stock;
-    String? unit;
-    
-    final units = json['units'];
-    if (units is List && units.isNotEmpty) {
-      final firstUnit = units.first;
-      if (firstUnit is Map<String, dynamic>) {
-        price = (firstUnit['price'] as num?)?.toDouble();
-        stock = firstUnit['stockQuantity'] as int?;
-        unit = firstUnit['unitName'] as String?;
-=======
     debugPrint('DEBUG: ProductModel.fromJson - id: ${json['id']}, name: ${json['name']}');
-    // Lấy giá trị cơ bản trước (fallback)
-    final double? price = (json['price'] ?? json['unitPrice'] as num?)?.toDouble();
-    int? stock = (json['stock'] ?? json['stockQuantity'] ?? json['quantity'] as num?)?.toInt();
-    String? unit = json['unit'] as String?;
+    
+    // Fallback basic values
+    final double? topLevelPrice = (json['price'] ?? json['unitPrice'] as num?)?.toDouble();
+    final int? topLevelStock = (json['stock'] ?? json['stockQuantity'] ?? json['quantity'] as num?)?.toInt();
+    final String? topLevelUnit = json['unit'] as String?;
 
-    debugPrint('DEBUG: Fallback price: $price, stock: $stock');
-
-    // Parse units list nếu có
+    // Parse units list if present
     List<ProductUnitMapping>? unitsList;
-    final unitsJson =
-        json['units'] ?? json['productUnits'] ?? json['productUnitMappings'];
-
-    debugPrint('DEBUG: unitsJson is List: ${unitsJson is List}, length: ${unitsJson is List ? unitsJson.length : 0}');
+    final unitsJson = json['units'] ?? json['productUnits'] ?? json['productUnitMappings'];
 
     if (unitsJson is List && unitsJson.isNotEmpty) {
       try {
-        unitsList = [];
-        for (final u in unitsJson) {
-           if (u is Map<String, dynamic>) {
-             unitsList.add(ProductUnitMapping.fromJson(u));
-           }
-        }
+        unitsList = unitsJson
+            .where((u) => u is Map<String, dynamic>)
+            .map((u) => ProductUnitMapping.fromJson(u as Map<String, dynamic>))
+            .toList();
 
-        // Nếu có units, lọc ra đơn vị active
+        // Filter active units
         final activeUnits = unitsList.where((u) => u.isActive).toList();
-        debugPrint('DEBUG: activeUnits length: ${activeUnits.length}');
 
-        // Nếu có units, lấy giá/tồn từ đơn vị mặc định hoặc đơn vị đầu tiên.
         if (activeUnits.isNotEmpty) {
           final defaultUnit = activeUnits.firstWhere(
             (u) => u.isDefault,
             orElse: () => activeUnits.first,
           );
           
-          debugPrint('DEBUG: defaultUnit found - price: ${defaultUnit.price}, stock: ${defaultUnit.stockQuantity}');
-
-          // Only override if top-level fields were null
           final bool? isActiveRaw = json['isActive'] as bool?;
           final String? statusRaw = json['status'] as String?;
           
@@ -104,11 +79,11 @@ class ProductModel {
             id: json['id']?.toString(),
             name: json['name'] as String?,
             description: json['description'] as String?,
-            price: price ?? defaultUnit.price,
+            price: topLevelPrice ?? defaultUnit.price,
             imageUrl: json['imageUrl'] as String?,
             category: json['categoryName'] ?? json['category'] as String?,
-            stock: stock ?? defaultUnit.stockQuantity,
-            unit: unit ?? defaultUnit.displayName,
+            stock: topLevelStock ?? defaultUnit.stockQuantity,
+            unit: topLevelUnit ?? defaultUnit.displayName,
             storeId: (json['storeId'] ?? json['store_id'])?.toString(),
             storeName: json['storeName'] ?? json['store_name'],
             isActive: isActiveRaw ?? (statusRaw != 'HIDDEN'),
@@ -120,32 +95,27 @@ class ProductModel {
         }
       } catch (e) {
         debugPrint('DEBUG: Error parsing units: $e');
->>>>>>> Stashed changes
       }
-    } else {
-      // Fallback to flat structure
-      price = (json['price'] as num?)?.toDouble();
-      stock = (json['stock'] ?? json['stockQuantity']) as int?;
-      unit = json['unit'] as String?;
     }
 
-    debugPrint('DEBUG: Returning fallback ProductModel');
+    // Fallback to flat structure
     final statusStr = json['status'] as String?;
     return ProductModel(
       id: json['id']?.toString(),
       name: json['name'] as String?,
       description: json['description'] as String?,
-      price: price,
+      price: topLevelPrice,
       imageUrl: json['imageUrl'] as String?,
       category: json['categoryName'] ?? json['category'] as String?,
-      stock: stock,
-      unit: unit,
+      stock: topLevelStock,
+      unit: topLevelUnit,
       storeId: (json['storeId'] ?? json['store_id'])?.toString(),
       storeName: json['storeName'] ?? json['store_name'],
       isActive: (json['isActive'] as bool?) ?? (statusStr != 'HIDDEN'),
       status: statusStr,
       createdAt: json['created_at'] as String?,
       updatedAt: json['updated_at'] as String?,
+      units: unitsList,
     );
   }
   
@@ -164,7 +134,41 @@ class ProductModel {
     'status': status,
     'created_at': createdAt,
     'updated_at': updatedAt,
+    'units': units?.map((e) => e.toJson()).toList(),
   };
+}
+
+@JsonSerializable()
+class ProductUnitMapping {
+  final String? id;
+  @JsonKey(name: 'unitName')
+  final String? unitLabel;
+  final double? price;
+  final int? stockQuantity;
+  final bool isActive;
+  final bool isDefault;
+  final String? unitCode;
+  final double? baseQuantity;
+  final String? baseUnit;
+
+  ProductUnitMapping({
+    this.id,
+    this.unitLabel,
+    this.price,
+    this.stockQuantity,
+    this.isActive = true,
+    this.isDefault = false,
+    this.unitCode,
+    this.baseQuantity,
+    this.baseUnit,
+  });
+
+  factory ProductUnitMapping.fromJson(Map<String, dynamic> json) =>
+      _$ProductUnitMappingFromJson(json);
+
+  Map<String, dynamic> toJson() => _$ProductUnitMappingToJson(this);
+
+  String get displayName => unitLabel ?? '';
 }
 
 @JsonSerializable()

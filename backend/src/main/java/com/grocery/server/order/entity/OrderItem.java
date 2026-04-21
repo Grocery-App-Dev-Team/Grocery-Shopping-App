@@ -1,6 +1,6 @@
 package com.grocery.server.order.entity;
 
-import com.grocery.server.product.entity.ProductUnit;
+import com.grocery.server.product.entity.ProductUnitMapping;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -29,7 +29,7 @@ public class OrderItem {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_unit_id", nullable = false)
-    private ProductUnit productUnit;
+    private ProductUnitMapping productUnitMapping;
 
 
     @Column(nullable = false)

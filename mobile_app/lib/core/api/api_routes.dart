@@ -20,18 +20,12 @@ class ApiRoutes {
 
   // ─── Orders ────────────────────────────────────────────────────────────
   static const String availableOrders = '/orders/available';
-<<<<<<< Updated upstream
   static const String myDeliveries = '/orders/my-deliveries';
   static const String myStoreOrders = '/orders/my-store-orders';
+  static const String adminOrders = '/orders/all';
   static String assignShipper(String id) => '/orders/$id/assign-shipper';
   static String updateOrderStatus(String id) => '/orders/$id/status';
   static String orderById(String id) => '/orders/$id';
-=======
-  static const String adminOrders = '/orders/all';
-  static String orderById(Object id) => '/orders/$id';
-  static String updateOrderStatus(Object id) => '/orders/$id/status';
-  static String assignShipper(Object id) => '/orders/$id/assign-shipper';
->>>>>>> Stashed changes
 
   // ─── Monitoring ─────────────────────────────────────────────────────────
   static const String stats = '/admin/stats';

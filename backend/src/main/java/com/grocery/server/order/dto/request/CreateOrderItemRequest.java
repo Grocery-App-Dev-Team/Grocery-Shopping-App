@@ -7,6 +7,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
+
 /**
  * DTO: CreateOrderItemRequest
  * Mô tả: Chi tiết một sản phẩm trong đơn hàng
@@ -18,15 +20,15 @@ import lombok.NoArgsConstructor;
 public class CreateOrderItemRequest {
 
     /**
-     * ID của ProductUnit (đơn vị sản phẩm cụ thể, ví dụ: Gói 300g, Khay 1kg)
+     * ID của ProductUnitMapping (biến thể sản phẩm cụ thể)
      */
-    @NotNull(message = "ID đơn vị sản phẩm không được để trống")
-    private Long productUnitId;
+    @NotNull(message = "ID biến thể sản phẩm không được để trống")
+    private Long productUnitMappingId;
 
     /**
      * Số lượng mua
      */
     @NotNull(message = "Số lượng không được để trống")
     @Positive(message = "Số lượng phải lớn hơn 0")
-    private Integer quantity;
+    private BigDecimal quantity;
 }

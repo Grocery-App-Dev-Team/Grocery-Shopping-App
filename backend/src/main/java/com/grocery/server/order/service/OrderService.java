@@ -12,7 +12,7 @@ import com.grocery.server.order.entity.Order;
 import com.grocery.server.order.entity.Order.OrderStatus;
 import com.grocery.server.order.entity.OrderItem;
 import com.grocery.server.order.repository.OrderRepository;
-import com.grocery.server.product.entity.ProductUnit;
+import com.grocery.server.product.entity.ProductUnitMapping;
 import com.grocery.server.product.repository.ProductRepository;
 import com.grocery.server.shared.exception.BadRequestException;
 import com.grocery.server.shared.exception.ResourceNotFoundException;
@@ -94,12 +94,6 @@ public class OrderService {
                 .build();
 
         for (var itemRequest : request.getItems()) {
-<<<<<<< Updated upstream
-            // Validate ProductUnit
-            ProductUnit productUnit = productRepository.findProductUnitById(itemRequest.getProductUnitId())
-                    .orElseThrow(() -> new ResourceNotFoundException(
-                            "Không tìm thấy đơn vị sản phẩm ID: " + itemRequest.getProductUnitId()));
-=======
             BigDecimal requestedQuantity = itemRequest.getQuantity();
 
             // Validate ProductUnitMapping
@@ -107,26 +101,16 @@ public class OrderService {
                     .findProductUnitMappingById(itemRequest.getProductUnitMappingId())
                     .orElseThrow(() -> new ResourceNotFoundException(
                             "Không tìm thấy biến thể sản phẩm ID: " + itemRequest.getProductUnitMappingId()));
->>>>>>> Stashed changes
 
             // Kiểm tra sản phẩm có thuộc cửa hàng này không
-            if (!productUnit.getProduct().getStore().getId().equals(request.getStoreId())) {
+            if (!productUnitMapping.getProduct().getStore().getId().equals(request.getStoreId())) {
                 throw new BadRequestException(
-<<<<<<< Updated upstream
-                        "Sản phẩm '" + productUnit.getProduct().getName() + "' không thuộc cửa hàng này");
-=======
                         "Sản phẩm '" + productUnitMapping.getProduct().getName() + "' không thuộc cửa hàng này");
->>>>>>> Stashed changes
             }
 
             // Kiểm tra tồn kho
-            if (productUnit.getStockQuantity() < itemRequest.getQuantity()) {
+            if (productUnitMapping.getStockQuantity() < requestedQuantity.intValue()) {
                 throw new BadRequestException(
-<<<<<<< Updated upstream
-                        "Sản phẩm '" + productUnit.getProduct().getName() + " - " + productUnit.getUnitName() +
-                                "' chỉ còn " + productUnit.getStockQuantity() + " (yêu cầu: "
-                                + itemRequest.getQuantity() + ")");
-=======
                         "Sản phẩm '" + productUnitMapping.getProduct().getName() + " - "
                                 + productUnitMapping.getDisplayUnitName() +
                                 "' chỉ còn " + productUnitMapping.getStockQuantity() + " (yêu cầu: " + requestedQuantity
@@ -139,40 +123,25 @@ public class OrderService {
             } catch (ArithmeticException ex) {
                 throw new BadRequestException(
                         "Số lượng đặt cho biến thể phải là số nguyên do tồn kho hiện được quản lý theo đơn vị nguyên");
->>>>>>> Stashed changes
             }
 
             // Tạo OrderItem
             OrderItem orderItem = OrderItem.builder()
                     .order(order)
-<<<<<<< Updated upstream
-                    .productUnit(productUnit)
-                    .quantity(itemRequest.getQuantity())
-                    .unitPrice(productUnit.getPrice())
-=======
                     .productUnitMapping(productUnitMapping)
-                    .quantity(requestedQuantity)
+                    .quantity(deductedStock)
                     .unitPrice(productUnitMapping.getPrice())
->>>>>>> Stashed changes
                     .build();
 
             orderItems.add(orderItem);
             totalAmount = totalAmount.add(orderItem.getSubtotal());
 
             // Trừ tồn kho
-<<<<<<< Updated upstream
-            productUnit.setStockQuantity(productUnit.getStockQuantity() - itemRequest.getQuantity());
-            log.info("Trừ {} sản phẩm '{}', còn lại: {}",
-                    itemRequest.getQuantity(),
-                    productUnit.getProduct().getName(),
-                    productUnit.getStockQuantity());
-=======
             productUnitMapping.setStockQuantity(productUnitMapping.getStockQuantity() - deductedStock);
             log.info("Trừ {} sản phẩm '{}', còn lại: {}",
                     requestedQuantity,
                     productUnitMapping.getProduct().getName(),
                     productUnitMapping.getStockQuantity());
->>>>>>> Stashed changes
         }
 
         order.setTotalAmount(totalAmount);
@@ -559,18 +528,6 @@ public class OrderService {
      */
     private OrderResponse mapToOrderResponse(Order order) {
         List<OrderItemResponse> items = order.getOrderItems().stream()
-<<<<<<< Updated upstream
-                .map(item -> OrderItemResponse.builder()
-                        .id(item.getId())
-                        .productId(item.getProductUnit().getProduct().getId())
-                        .productName(item.getProductUnit().getProduct().getName())
-                        .productImageUrl(item.getProductUnit().getProduct().getImageUrl())
-                        .unitName(item.getProductUnit().getUnitName())
-                        .unitPrice(item.getUnitPrice())
-                        .quantity(item.getQuantity())
-                        .subtotal(item.getSubtotal())
-                        .build())
-=======
                 .map(item -> {
                     Long productId = null;
                     String productName = "Sản phẩm không khả dụng";
@@ -602,7 +559,6 @@ public class OrderService {
                             .subtotal(item.getSubtotal())
                             .build();
                 })
->>>>>>> Stashed changes
                 .collect(Collectors.toList());
 
         return OrderResponse.builder()

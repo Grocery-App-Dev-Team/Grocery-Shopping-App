@@ -88,26 +88,15 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
            "AND p.status = 'AVAILABLE'")
     List<Product> searchByKeyword(@Param("keyword") String keyword);
     
-    /**
-     * Tìm ProductUnit theo ID (dùng cho Order Module)
-     * @param productUnitId ID của product_units
-     * @return ProductUnit nếu tìm thấy
-     */
-    @Query("SELECT pu FROM ProductUnit pu WHERE pu.id = :productUnitId")
-    java.util.Optional<com.grocery.server.product.entity.ProductUnit> findProductUnitById(@Param("productUnitId") Long productUnitId);
+
     
     /**
      * Lấy top sản phẩm bán chạy (dựa vào số lượng order_items)
      */
     @Query(value = 
         "SELECT p.* FROM products p " +
-<<<<<<< Updated upstream
-        "JOIN product_units pu ON pu.product_id = p.id " +
-        "JOIN order_items oi ON oi.product_unit_id = pu.id " +
-=======
               "JOIN product_units pum ON pum.product_id = p.id " +
               "JOIN order_items oi ON oi.product_unit_mapping_id = pum.id " +
->>>>>>> Stashed changes
         "WHERE p.store_id = :storeId " +
         "GROUP BY p.id " +
         "ORDER BY SUM(oi.quantity) DESC " +
@@ -115,4 +104,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
         nativeQuery = true)
     List<Product> findTopSellingProducts(@Param("storeId") Long storeId, 
                                          @Param("limit") int limit);
+
+    @Query("SELECT pum FROM ProductUnitMapping pum WHERE pum.id = :id")
+    java.util.Optional<com.grocery.server.product.entity.ProductUnitMapping> findProductUnitMappingById(@Param("id") Long id);
 }

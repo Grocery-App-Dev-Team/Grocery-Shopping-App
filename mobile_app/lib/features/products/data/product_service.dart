@@ -75,16 +75,11 @@ class ProductService {
       final data = response.data;
       if (data == null) return [];
 
-<<<<<<< Updated upstream
-      final list = data is List ? data : (data is Map<String, dynamic> ? (data['data'] ?? []) : []);
-=======
       final list = data is List
           ? data
           : (data is Map<String, dynamic> ? (data['data'] ?? []) : []);
       
-      print('DEBUG: getProductsByStore($storeId) response: $list');
-      
->>>>>>> Stashed changes
+      debugPrint('getProductsByStore($storeId) response count: ${list.length}');
       if (list is List) {
         return list
             .map((e) => ProductModel.fromJson(e is Map<String, dynamic> ? e : Map<String, dynamic>.from(e as Map)))

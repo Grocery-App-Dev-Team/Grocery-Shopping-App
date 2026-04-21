@@ -5,7 +5,7 @@ import com.grocery.server.product.dto.request.UpdateProductRequest;
 import com.grocery.server.product.dto.response.ProductResponse;
 import com.grocery.server.product.entity.Category;
 import com.grocery.server.product.entity.Product;
-import com.grocery.server.product.entity.ProductUnit;
+import com.grocery.server.product.entity.ProductUnitMapping;
 import com.grocery.server.product.repository.CategoryRepository;
 import com.grocery.server.product.repository.ProductRepository;
 import com.grocery.server.shared.exception.BadRequestException;
@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -143,16 +144,18 @@ public class ProductService {
                 .build();
         
         // Tạo product units
-        List<ProductUnit> units = request.getUnits().stream()
-                .map(unitReq -> ProductUnit.builder()
+        List<ProductUnitMapping> units = request.getUnits().stream()
+                .map(unitReq -> ProductUnitMapping.builder()
                         .product(product)
-                        .unitName(unitReq.getUnitName())
+                        .unitLabel(unitReq.getUnitName())
                         .price(BigDecimal.valueOf(unitReq.getPrice()))
                         .stockQuantity(unitReq.getStockQuantity() != null ? unitReq.getStockQuantity() : 0)
+                        .isActive(true)
+                        .isDefault(false)
                         .build())
                 .collect(Collectors.toList());
         
-        product.setUnits(units);
+        product.setProductUnitMappings(units);
         
         Product savedProduct = productRepository.save(product);
         log.info("Created new product: {} for store: {}", savedProduct.getName(), store.getStoreName());
@@ -251,14 +254,6 @@ public class ProductService {
      * Helper: Convert Product entity to ProductResponse DTO
      */
     private ProductResponse convertToResponse(Product product) {
-<<<<<<< Updated upstream
-        List<ProductResponse.ProductUnitResponse> unitResponses = product.getUnits().stream()
-                .map(unit -> ProductResponse.ProductUnitResponse.builder()
-                        .id(unit.getId())
-                        .unitName(unit.getUnitName())
-                        .price(unit.getPrice())
-                        .stockQuantity(unit.getStockQuantity())
-=======
         // Lấy danh sách productUnitMappings và chuyển đổi sang response
         List<ProductUnitMapping> mappings = product.getProductUnitMappings();
         if (mappings == null) {
@@ -278,7 +273,6 @@ public class ProductService {
                         && Boolean.TRUE.equals(mapping.getUnit().getRequiresQuantityInput()))
                         .price(mapping.getPrice())
                         .stockQuantity(mapping.getStockQuantity())
->>>>>>> Stashed changes
                         .build())
                 .collect(Collectors.toList());
         

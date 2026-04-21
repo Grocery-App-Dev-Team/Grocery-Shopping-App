@@ -1,5 +1,4 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
-// ignore_for_file: unused_element
 
 part of 'product_model.dart';
 
@@ -22,6 +21,9 @@ ProductModel _$ProductModelFromJson(Map<String, dynamic> json) => ProductModel(
       status: json['status'] as String?,
       createdAt: json['created_at'] as String?,
       updatedAt: json['updated_at'] as String?,
+      units: (json['units'] as List<dynamic>?)
+          ?.map((e) => ProductUnitMapping.fromJson(e as Map<String, dynamic>))
+          .toList(),
     );
 
 Map<String, dynamic> _$ProductModelToJson(ProductModel instance) =>
@@ -40,6 +42,33 @@ Map<String, dynamic> _$ProductModelToJson(ProductModel instance) =>
       'status': instance.status,
       'created_at': instance.createdAt,
       'updated_at': instance.updatedAt,
+      'units': instance.units,
+    };
+
+ProductUnitMapping _$ProductUnitMappingFromJson(Map<String, dynamic> json) =>
+    ProductUnitMapping(
+      id: json['id'] as String?,
+      unitLabel: json['unitName'] as String?,
+      price: (json['price'] as num?)?.toDouble(),
+      stockQuantity: (json['stockQuantity'] as num?)?.toInt(),
+      isActive: json['isActive'] as bool? ?? true,
+      isDefault: json['isDefault'] as bool? ?? false,
+      unitCode: json['unitCode'] as String?,
+      baseQuantity: (json['baseQuantity'] as num?)?.toDouble(),
+      baseUnit: json['baseUnit'] as String?,
+    );
+
+Map<String, dynamic> _$ProductUnitMappingToJson(ProductUnitMapping instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'unitName': instance.unitLabel,
+      'price': instance.price,
+      'stockQuantity': instance.stockQuantity,
+      'isActive': instance.isActive,
+      'isDefault': instance.isDefault,
+      'unitCode': instance.unitCode,
+      'baseQuantity': instance.baseQuantity,
+      'baseUnit': instance.baseUnit,
     };
 
 CreateProductRequest _$CreateProductRequestFromJson(
@@ -56,17 +85,17 @@ CreateProductRequest _$CreateProductRequestFromJson(
     );
 
 Map<String, dynamic> _$CreateProductRequestToJson(
-  CreateProductRequest instance,
-) => <String, dynamic>{
-  'name': instance.name,
-  'description': instance.description,
-  'price': instance.price,
-  'imageUrl': instance.imageUrl,
-  'category': instance.category,
-  'stock': instance.stock,
-  'unit': instance.unit,
-  'isActive': instance.isActive,
-};
+        CreateProductRequest instance) =>
+    <String, dynamic>{
+      'name': instance.name,
+      'description': instance.description,
+      'price': instance.price,
+      'imageUrl': instance.imageUrl,
+      'category': instance.category,
+      'stock': instance.stock,
+      'unit': instance.unit,
+      'isActive': instance.isActive,
+    };
 
 UpdateProductRequest _$UpdateProductRequestFromJson(
         Map<String, dynamic> json) =>
@@ -82,14 +111,14 @@ UpdateProductRequest _$UpdateProductRequestFromJson(
     );
 
 Map<String, dynamic> _$UpdateProductRequestToJson(
-  UpdateProductRequest instance,
-) => <String, dynamic>{
-  'name': instance.name,
-  'description': instance.description,
-  'price': instance.price,
-  'imageUrl': instance.imageUrl,
-  'category': instance.category,
-  'stock': instance.stock,
-  'unit': instance.unit,
-  'isActive': instance.isActive,
-};
+        UpdateProductRequest instance) =>
+    <String, dynamic>{
+      'name': instance.name,
+      'description': instance.description,
+      'price': instance.price,
+      'imageUrl': instance.imageUrl,
+      'category': instance.category,
+      'stock': instance.stock,
+      'unit': instance.unit,
+      'isActive': instance.isActive,
+    };

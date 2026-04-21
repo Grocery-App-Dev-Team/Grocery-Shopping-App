@@ -78,7 +78,7 @@ public class Product {
      * VD: Gói 300g, Khay 1kg, 1 Bó...
      */
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<ProductUnit> units;
+    private List<ProductUnitMapping> productUnitMappings;
 
     // ========== ENUMS ==========
 

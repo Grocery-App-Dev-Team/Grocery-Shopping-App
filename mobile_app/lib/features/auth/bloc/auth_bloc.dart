@@ -108,12 +108,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         appType: event.appType,
       );
 
-<<<<<<< Updated upstream
       if (authResponse.isAuthenticated) {
         AppLogger.info('✅ Registration successful');
-=======
-      if (authResponse.success) {
->>>>>>> Stashed changes
         emit(
           const AuthRegistrationSuccess(
             message: 'Đăng ký thành công! Vui lòng đăng nhập.',
