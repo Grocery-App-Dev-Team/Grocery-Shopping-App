@@ -746,7 +746,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   }
 
   Future<void> _openProofOfDelivery() async {
-    final updatedOrder = await Navigator.push<ShipperOrder>(
+    final updatedOrder = await Navigator.push<ShipperOrder?>(
       context,
       MaterialPageRoute(
         builder: (_) => DeliveryConfirmationScreen(
@@ -755,14 +755,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       ),
     );
 
-    if (!mounted || updatedOrder == null) {
-      return;
-    }
+    if (!mounted || updatedOrder == null) return;
 
     context.read<ShipperDashboardBloc>().add(RefreshDashboardData());
-
     if (!mounted) return;
-
     Navigator.of(context).pop(true);
   }
 

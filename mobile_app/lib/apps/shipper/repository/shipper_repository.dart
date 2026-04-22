@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:http_parser/http_parser.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:grocery_shopping_app/core/constants/app_constants.dart';
@@ -522,6 +523,22 @@ class ShipperRepository {
     return null;
   }
 
+  MediaType _resolveImageContentType(String filename) {
+    final ext = filename.split('.').last.toLowerCase();
+    switch (ext) {
+      case 'png':
+        return MediaType('image', 'png');
+      case 'gif':
+        return MediaType('image', 'gif');
+      case 'webp':
+        return MediaType('image', 'webp');
+      case 'jpg':
+      case 'jpeg':
+      default:
+        return MediaType('image', 'jpeg');
+    }
+  }
+
   Future<String?> _uploadAvatarViaBackend(
     Uint8List bytes,
     String filename,
@@ -529,6 +546,7 @@ class ShipperRepository {
     final multipartFile = MultipartFile.fromBytes(
       bytes,
       filename: filename,
+      contentType: _resolveImageContentType(filename),
     );
 
     final formData = FormData.fromMap({
@@ -579,9 +597,11 @@ class ShipperRepository {
   Future<String?> uploadPOD(XFile imageFile, int orderId) async {
     try {
       final bytes = await imageFile.readAsBytes();
+      final filename = imageFile.name.isNotEmpty ? imageFile.name : 'pod.jpg';
       final multipartFile = MultipartFile.fromBytes(
         bytes,
-        filename: imageFile.name,
+        filename: filename,
+        contentType: _resolveImageContentType(filename),
       );
 
       final formData = FormData.fromMap({

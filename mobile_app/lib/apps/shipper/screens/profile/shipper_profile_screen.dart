@@ -16,7 +16,7 @@ import '../../../../core/location/province_api.dart';
 import '../../../../core/theme/shipper_theme.dart';
 import '../../../../shared/widgets/searchable_dropdown.dart';
 import '../auth/shipper_login_screen.dart';
-import '../../widgets/avatar_cropper.dart';
+import '../../../../shared/widgets/avatar_cropper.dart';
 
 class ShipperProfileScreen extends StatefulWidget {
   const ShipperProfileScreen({super.key});
@@ -608,6 +608,7 @@ class _ShipperProfileScreenState extends State<ShipperProfileScreen> {
       builder: (ctx) => AvatarCropper(
         image: image,
         imageBytes: imageBytes,
+        accentColor: ShipperTheme.primaryColor,
         onConfirm: (bytes) {
           croppedBytes = bytes;
           Navigator.pop(ctx);
