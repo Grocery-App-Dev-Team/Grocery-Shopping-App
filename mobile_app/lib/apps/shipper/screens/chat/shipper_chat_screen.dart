@@ -27,7 +27,6 @@ class _ShipperChatScreenState extends State<ShipperChatScreen> {
   final ScrollController _scrollController = ScrollController();
 
   final Set<String> _messageIds = {};
-  bool _connected = false;
   List<MessageModel> _messages = [];
   bool _loading = true;
   bool _sending = false;
@@ -50,14 +49,14 @@ class _ShipperChatScreenState extends State<ShipperChatScreen> {
 
     _messageReceivedListener = (message) {
       if (message.conversationId == widget.conversationId && mounted) {
-        // Deduplicate optimistic message: if we have a local message with
-        // same senderType & content and a timestamp close to server timestamp,
-        // replace it instead of appending duplicate.
+        // Deduplicate: if we have an optimistic temp message with the same
+        // sender & content, replace it regardless of timestamp (latency can
+        // make timeDiff > 5s). Temp ids are numeric timestamps.
         final idx = _messages.indexWhere((m) {
           final sameSender = m.senderType == message.senderType;
           final sameContent = m.content == message.content;
-          final timeDiff = message.timestamp.difference(m.timestamp).inSeconds.abs();
-          return sameSender && sameContent && timeDiff <= 5;
+          final isTemp = int.tryParse(m.id) != null; // temp id = timestamp
+          return sameSender && sameContent && isTemp;
         });
 
         setState(() {
@@ -77,9 +76,7 @@ class _ShipperChatScreenState extends State<ShipperChatScreen> {
 
     _connectedListener = () {
       if (mounted) {
-        setState(() {
-          _connected = true;
-        });
+        setState(() {});
         // Mark conversation as read on connect and refresh unread badge
         try {
           final ws = ChatWebSocketService.instance;
@@ -91,17 +88,13 @@ class _ShipperChatScreenState extends State<ShipperChatScreen> {
 
     _disconnectedListener = () {
       if (mounted) {
-        setState(() {
-          _connected = false;
-        });
+        setState(() {});
       }
     };
 
     _errorListener = () {
       if (mounted) {
-        setState(() {
-          _connected = false;
-        });
+        setState(() {});
       }
     };
 
@@ -184,12 +177,19 @@ class _ShipperChatScreenState extends State<ShipperChatScreen> {
       );
       if (mounted) {
         setState(() {
-          // Replace temp message
-          final index = _messages.indexWhere((m) => m.id == tempId);
-          if (index != -1) {
-            _messages[index] = message;
+          if (_messageIds.contains(message.id)) {
+            // WebSocket already delivered this message before API responded.
+            // Just remove the temp message to avoid duplication.
+            _messages.removeWhere((m) => m.id == tempId);
             _messageIds.remove(tempId);
-            _messageIds.add(message.id);
+          } else {
+            // Replace temp message with server-confirmed message
+            final index = _messages.indexWhere((m) => m.id == tempId);
+            if (index != -1) {
+              _messages[index] = message;
+              _messageIds.remove(tempId);
+              _messageIds.add(message.id);
+            }
           }
           _sending = false;
         });
@@ -255,12 +255,6 @@ class _ShipperChatScreenState extends State<ShipperChatScreen> {
           ],
         ),
         actions: [
-          Icon(
-            _connected ? Icons.wifi : Icons.wifi_off,
-            color: _connected ? Colors.lightGreenAccent : Colors.redAccent,
-            size: 20,
-          ),
-          const SizedBox(width: 12),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadMessages,

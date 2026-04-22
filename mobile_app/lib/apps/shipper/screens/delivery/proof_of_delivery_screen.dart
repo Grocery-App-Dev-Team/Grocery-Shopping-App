@@ -522,13 +522,13 @@ class _ProofOfDeliveryScreenState extends State<ProofOfDeliveryScreen> {
       if (mounted) {
         if (updated != null) {
           context.read<ShipperDashboardBloc>().add(RefreshDashboardData());
-          Navigator.of(context).popUntil((route) => route.isFirst);
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Giao hàng thành công!'),
               backgroundColor: Colors.green,
             ),
           );
+          Navigator.of(context).pop(true);
         } else {
           setState(
             () => _errorMessage = 'Không thể cập nhật trạng thái đơn hàng',

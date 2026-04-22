@@ -9,7 +9,6 @@ import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 
-import '../../../../core/theme/shipper_theme.dart';
 import '../../../../core/utils/app_localizations.dart';
 
 class _PreparedImageData {
@@ -62,6 +61,7 @@ class AvatarCropper extends StatefulWidget {
   final VoidCallback onCancel;
   final int? outputSize;
   final int jpegQuality;
+  final Color? accentColor;
 
   const AvatarCropper({
     super.key,
@@ -71,6 +71,7 @@ class AvatarCropper extends StatefulWidget {
     required this.onCancel,
     this.outputSize = 800,
     this.jpegQuality = 82,
+    this.accentColor,
   });
 
   @override
@@ -337,6 +338,7 @@ class _AvatarCropperState extends State<AvatarCropper> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final accent = widget.accentColor ?? scheme.primary;
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -378,7 +380,7 @@ class _AvatarCropperState extends State<AvatarCropper> {
               ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
             ),
             const SizedBox(height: 24),
-            _buildCropArea(),
+            _buildCropArea(accent),
             const SizedBox(height: 24),
             Padding(
               padding: const EdgeInsets.all(16),
@@ -407,7 +409,7 @@ class _AvatarCropperState extends State<AvatarCropper> {
                           ? _cropAndUpload
                           : null,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: ShipperTheme.primaryColor,
+                        backgroundColor: accent,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
@@ -442,7 +444,7 @@ class _AvatarCropperState extends State<AvatarCropper> {
     );
   }
 
-  Widget _buildCropArea() {
+  Widget _buildCropArea(Color accent) {
     final sourceAspect = _baseImageSize.width / _baseImageSize.height;
     final requestedLongestSide = (_cropSize * _maxScale).round();
     final previewCacheSize = math.min(2048, math.max(1024, requestedLongestSide));
@@ -464,7 +466,7 @@ class _AvatarCropperState extends State<AvatarCropper> {
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           border: Border.all(
-            color: ShipperTheme.primaryColor,
+            color: accent,
             width: 3,
           ),
           boxShadow: [

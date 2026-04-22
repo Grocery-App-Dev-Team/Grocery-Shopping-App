@@ -10,6 +10,7 @@ import '../../services/shipper_realtime_stomp_service.dart';
 import '../../../../core/theme/shipper_theme.dart';
 import '../order_detail/order_detail_screen.dart';
 import 'order_map_screen.dart';
+import 'delivery_confirmation_screen.dart';
 
 class DeliveryFlowScreen extends StatefulWidget {
   final ShipperOrder order;
@@ -639,7 +640,38 @@ class _DeliveryFlowScreenState extends State<DeliveryFlowScreen> {
         width: double.infinity,
         height: 52,
         child: ElevatedButton.icon(
-          onPressed: _isLoading ? null : () => _updateStatus(newStatus),
+          onPressed: _isLoading
+              ? null
+              : () async {
+                  if (newStatus == 'DELIVERED') {
+                    setState(() => _isLoading = true);
+                    try {
+                      final updatedOrder = await Navigator.push<ShipperOrder?>(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => DeliveryConfirmationScreen(
+                            order: _order,
+                          ),
+                        ),
+                      );
+
+                      if (!mounted) return;
+
+                      if (updatedOrder != null) {
+                        setState(() => _order = updatedOrder);
+                        context
+                            .read<ShipperDashboardBloc>()
+                            .add(RefreshDashboardData());
+                        await Future.delayed(const Duration(seconds: 2));
+                        if (mounted) Navigator.pop(context, true);
+                      }
+                    } finally {
+                      if (mounted) setState(() => _isLoading = false);
+                    }
+                  } else {
+                    _updateStatus(newStatus);
+                  }
+                },
           icon: _isLoading
               ? const SizedBox(
                   width: 20,

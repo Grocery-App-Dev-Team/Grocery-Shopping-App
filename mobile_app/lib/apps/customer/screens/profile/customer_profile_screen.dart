@@ -1,10 +1,12 @@
 // ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:dio/dio.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/utils/image_picker_helper.dart';
+import '../../../../shared/widgets/avatar_cropper.dart';
 import '../../../../shared/widgets/snackbar_utils.dart';
 
 import '../../../../core/auth/auth_session.dart';
@@ -181,14 +183,35 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
     final xfile = await ImagePickerHelper.pickFromGallery(context);
     if (xfile == null) return;
 
+    Uint8List? imageBytes;
+    if (kIsWeb) {
+      imageBytes = await xfile.readAsBytes();
+    }
+
+    Uint8List? croppedBytes;
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AvatarCropper(
+        image: xfile,
+        imageBytes: imageBytes,
+        onConfirm: (bytes) {
+          croppedBytes = bytes;
+          Navigator.pop(ctx);
+        },
+        onCancel: () => Navigator.pop(ctx),
+      ),
+    );
+
+    if (croppedBytes == null) return;
+
     setState(() => _uploadingAvatar = true);
     try {
-      final bytes = kIsWeb ? await xfile.readAsBytes() : null;
-
       final formData = FormData.fromMap({
-        'file': kIsWeb
-            ? MultipartFile.fromBytes(bytes!, filename: xfile.name)
-            : await MultipartFile.fromFile(xfile.path, filename: xfile.name),
+        'file': MultipartFile.fromBytes(
+          croppedBytes!,
+          filename: '${DateTime.now().millisecondsSinceEpoch}_avatar.jpg',
+        ),
       });
 
       final response =

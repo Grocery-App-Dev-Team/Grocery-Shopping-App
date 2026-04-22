@@ -55,13 +55,14 @@ class _CustomerChatScreenState extends State<CustomerChatScreen> {
     _messageReceivedListener = (message) {
       debugPrint('📩 Received message: ${message.id}');
       if (message.conversationId == widget.conversationId && mounted) {
-        // Deduplicate optimistic message: find a local message with same
-        // senderType & content and a timestamp close to server timestamp.
+        // Deduplicate: if we have an optimistic temp message with the same
+        // sender & content, replace it regardless of timestamp (latency can
+        // make timeDiff > 5s). Temp ids are numeric timestamps.
         final idx = _messages.indexWhere((m) {
           final sameSender = m.senderType == message.senderType;
           final sameContent = m.content == message.content;
-          final timeDiff = message.timestamp.difference(m.timestamp).inSeconds.abs();
-          return sameSender && sameContent && timeDiff <= 5;
+          final isTemp = int.tryParse(m.id) != null; // temp id = timestamp
+          return sameSender && sameContent && isTemp;
         });
 
         setState(() {
@@ -191,12 +192,19 @@ class _CustomerChatScreenState extends State<CustomerChatScreen> {
         );
         if (mounted) {
           setState(() {
-            // Replace temp message with real message
-            final index = _messages.indexWhere((m) => m.id == tempId);
-            if (index != -1) {
-              _messages[index] = message;
+            if (_messageIds.contains(message.id)) {
+              // WebSocket already delivered this message before API responded.
+              // Just remove the temp message to avoid duplication.
+              _messages.removeWhere((m) => m.id == tempId);
               _messageIds.remove(tempId);
-              _messageIds.add(message.id);
+            } else {
+              // Replace temp message with server-confirmed message
+              final index = _messages.indexWhere((m) => m.id == tempId);
+              if (index != -1) {
+                _messages[index] = message;
+                _messageIds.remove(tempId);
+                _messageIds.add(message.id);
+              }
             }
             _sending = false;
           });
@@ -444,27 +452,14 @@ class _MessageBubble extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      _formatTime(message.timestamp),
-                      style: TextStyle(
-                        color: isMe
-                            ? scheme.onPrimary.withValues(alpha: 0.7)
-                            : scheme.onSurfaceVariant,
-                        fontSize: 11,
-                      ),
-                    ),
-                    if (isMe) ...[
-                      const SizedBox(width: 4),
-                      Icon(
-                        message.read ? Icons.done_all : Icons.done,
-                        size: 14,
-                        color: scheme.onPrimary.withValues(alpha: 0.7),
-                      ),
-                    ],
-                  ],
+                Text(
+                  _formatTime(message.timestamp),
+                  style: TextStyle(
+                    color: isMe
+                        ? scheme.onPrimary.withValues(alpha: 0.7)
+                        : scheme.onSurfaceVariant,
+                    fontSize: 11,
+                  ),
                 ),
               ],
             ),

@@ -15,7 +15,6 @@ class ShipperChatListScreen extends StatefulWidget {
 class _ShipperChatListScreenState extends State<ShipperChatListScreen> {
   final ShipperChatApi _chatApi = ShipperChatApi();
 
-  bool _connected = false;
   List<ConversationModel> _conversations = [];
   bool _loading = true;
   String? _error;
@@ -42,23 +41,17 @@ class _ShipperChatListScreenState extends State<ShipperChatListScreen> {
     };
     _connectedListener = () {
       if (mounted) {
-        setState(() {
-          _connected = true;
-        });
+        setState(() {});
       }
     };
     _disconnectedListener = () {
       if (mounted) {
-        setState(() {
-          _connected = false;
-        });
+        setState(() {});
       }
     };
     _errorListener = () {
       if (mounted) {
-        setState(() {
-          _connected = false;
-        });
+        setState(() {});
       }
     };
 
@@ -113,14 +106,7 @@ class _ShipperChatListScreenState extends State<ShipperChatListScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Tin nhắn'),
-        actions: [
-          Icon(
-            _connected ? Icons.wifi : Icons.wifi_off,
-            color: _connected ? Colors.lightGreenAccent : Colors.redAccent,
-            size: 20,
-          ),
-          const SizedBox(width: 12),
-        ],
+        actions: const [],
       ),
       body: Container(
         color: scheme.surfaceContainerLowest,
